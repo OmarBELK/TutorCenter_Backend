@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.files.uploadedfile import UploadedFile
 
 # Create your models here.
 
@@ -6,7 +7,12 @@ from django.db import models
 class Etudiant(models.Model):
     nom = models.CharField(max_length=100)
     prenom = models.CharField(max_length=100)
-    date_naissance = models.DateField()
+    telephone = models.CharField(max_length=20, null=True, blank=True)
+    adresse = models.TextField(null=True, blank=True)
+    date_naissance = models.DateField(null=True, blank=True)
+    sexe = models.CharField(max_length=10, choices=[('M', 'Male'), ('F', 'Female')], null=True, blank=True)
+    nationalite = models.CharField(max_length=100, null=True, blank=True, default='Marocain')
+    contact_urgence = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self) -> str:
         return f"{self.nom} {self.prenom}"
@@ -15,7 +21,12 @@ class Etudiant(models.Model):
 class Professeur(models.Model):
     nom = models.CharField(max_length=100)
     prenom = models.CharField(max_length=100)
-    specialite = models.CharField(max_length=100)
+    telephone = models.CharField(max_length=20, null=True, blank=True)
+    adresse = models.TextField(null=True, blank=True)
+    date_naissance = models.DateField(null=True, blank=True)
+    sexe = models.CharField(max_length=10, choices=[('M', 'Male'), ('F', 'Female')], null=True, blank=True)
+    nationalite = models.CharField(max_length=100, null=True, blank=True, default='Marocain')
+    specialite = models.CharField()
     comission_fixe = models.FloatField()
 
     def __str__(self):
@@ -52,6 +63,7 @@ class Matiere(models.Model):
 
 
 class Groupe(models.Model):
+    nom_groupe = models.CharField(max_length=100, default='Groupe 1')
     professeur = models.ForeignKey(Professeur, on_delete=models.CASCADE)
     niveau = models.ForeignKey(Niveau, on_delete=models.CASCADE)
     max_etudiants = models.IntegerField()

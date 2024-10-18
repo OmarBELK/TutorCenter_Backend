@@ -6,15 +6,104 @@ from .models import Niveau, Filiere, Matiere, Groupe, EtudiantGroupe
 
 
 
+# class EtudiantSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Etudiant
+#         fields = '__all__'
+
+
 class EtudiantSerializer(serializers.ModelSerializer):
+
+    groupe_id = serializers.IntegerField(write_only=True, required=False)
+
     class Meta:
         model = Etudiant
-        fields = '__all__'
+        fields = ['id', 'nom', 'prenom', 'date_naissance', 'groupe_id', 'telephone', 'adresse', 'sexe', 'nationalite', 'contact_urgence']
+
+    def create(self, validated_data):
+        groupe_id = validated_data.pop('groupe_id', None)
+        etudiant  = Etudiant.objects.create(**validated_data)
+        if groupe_id:
+            groupe = Groupe.objects.get(pk=groupe_id)
+            EtudiantGroupe.objects.create(etudiant=etudiant, groupe=groupe)
+        return etudiant 
+
+
+class EtudiantDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Etudiant
+        fields = ['id', 'nom', 'prenom', 'date_naissance','telephone', 'adresse', 'sexe', 'nationalite', 'contact_urgence','groupes', 'paiements',]
+
+    groupes   = serializers.SerializerMethodField()
+    paiements = serializers.SerializerMethodField()
+
+    def get_groupes(self, obj):
+        etudiant_groupes = EtudiantGroupe.objects.filter(etudiant=obj)
+        return [{
+            'id': eg.groupe.id,
+            'nom_groupe': eg.groupe.nom_groupe,
+            'matiere': eg.groupe.matiere.nom_matiere,
+            'filiere':eg.groupe.filiere.nom_filiere,
+            'niveau': eg.groupe.niveau.nom_niveau,
+            'professeur': f"{eg.groupe.professeur.nom} {eg.groupe.professeur.prenom}"
+        } for eg in etudiant_groupes]
+    
+    def get_paiements(self, obj):
+        paiements = Paiement.objects.filter(etudiant=obj)
+        return [{
+            'id': p.id,
+            'montant': p.montant,
+            'date_paiement': p.date_paiement,
+            'statut_paiement': p.statut_paiement,
+            'groupe': p.groupe.id,
+            'commission_percentage': p.commission_percentage
+        } for p in paiements]
+
+
 
 class ProfesseurSerializer(serializers.ModelSerializer):
     class Meta:
         model = Professeur
         fields = '__all__'
+
+
+class ProfesseurDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Professeur
+        fields = ['id', 'nom', 'prenom', 'telephone', 'adresse', 'date_naissance', 'sexe', 'nationalite', 'specialite', 'comission_fixe', 'groupes', 'commissions']
+
+    groupes    = serializers.SerializerMethodField()
+    comissions = serializers.SerializerMethodField()
+
+    def get_groupes(self, obj):
+        groupes = Groupe.objects.filter(professeur=obj)
+        return [{
+            'id': g.id,
+            'nom_groupe': g.nom_groupe,
+            'matiere': g.matiere.nom_matiere,
+            'filiere': g.filiere.nom_filiere,
+            'niveau': g.niveau.nom_niveau,
+            'max_etudiants': g.max_etudiants,
+            'etudiants': g.etudiants.count()
+        } for g in groupes]
+
+    def get_commissions(self, obj):
+        commissions = Comission.objects.filter(professeur=obj)
+        return [{
+            'id': c.id,
+            'montant': c.montant,
+            'date_comission': c.date_comission,
+            'statut_comission': c.statut_comission,
+            'etudiant': f"{c.etudiant.nom} {c.etudiant.prenom}"
+        } for c in commissions]
+        
+
+
+
+
+
+
+
 
 class ComissionSerializer(serializers.ModelSerializer):
 
@@ -56,7 +145,7 @@ class EtudiantGroupeSerializer(serializers.ModelSerializer):
 class GroupeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Groupe
-        fields = ['id', 'professeur', 'niveau', 'max_etudiants', 'filiere', 'matiere']
+        fields = ['id', 'nom_groupe', 'professeur', 'niveau', 'max_etudiants', 'filiere', 'matiere']
 
 class GroupeDetailSerializer(serializers.ModelSerializer):
 
@@ -67,7 +156,7 @@ class GroupeDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Groupe
-        fields = ['id', 'professeur', 'niveau', 'max_etudiants', 'filiere', 'matiere']
+        fields = ['id','nom_groupe', 'professeur', 'niveau', 'max_etudiants', 'filiere', 'matiere']
 
 
 class GroupeWithEtudiantsSerializer(serializers.ModelSerializer):
@@ -80,7 +169,7 @@ class GroupeWithEtudiantsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = Groupe
-        fields = ['id', 'professeur', 'niveau', 'max_etudiants', 'filiere', 'matiere', 'etudiants']
+        fields = ['id', 'nom_groupe', 'professeur', 'niveau', 'max_etudiants', 'filiere', 'matiere', 'etudiants']
 
     # Custom method to retrieve students assigned to each group
     def get_etudiants(self, obj):
@@ -94,6 +183,9 @@ from rest_framework import serializers
 from .models import Paiement, Comission, Groupe
 
 class PaiementSerializer(serializers.ModelSerializer):
+
+    etudiant = EtudiantSerializer(read_only=True)
+    groupe   = GroupeSerializer(read_only=True)
 
     class Meta:
         model = Paiement
@@ -148,38 +240,6 @@ class PaiementSerializer(serializers.ModelSerializer):
 
 
 
-
-
-""" ---------------------------------------  Detail Serializer for Etudiant ------------------------------------"""
-
-class EtudiantDetailSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Etudiant
-        fields = ['id', 'nom', 'prenom', 'date_naissance', 'groupes', 'paiements']
-
-    groupes   = serializers.SerializerMethodField()
-    paiements = serializers.SerializerMethodField()
-
-    def get_groupes(self, obj):
-        etudiant_groupes = EtudiantGroupe.objects.filter(etudiant=obj)
-        return [{
-            'id': eg.groupe.id,
-            'matiere': eg.groupe.matiere.nom_matiere,
-            'filiere':eg.groupe.filiere.nom_filiere,
-            'niveau': eg.groupe.niveau.nom_niveau,
-            'professeur': f"{eg.groupe.professeur.nom} {eg.groupe.professeur.prenom}"
-        } for eg in etudiant_groupes]
-    
-    def get_paiements(self, obj):
-        paiements = Paiement.objects.filter(etudiant=obj)
-        return [{
-            'id': p.id,
-            'montant': p.montant,
-            'date_paiement': p.date_paiement,
-            'statut_paiement': p.statut_paiement,
-            'groupe': p.groupe.id,
-            'commission_percentage': p.commission_percentage
-        } for p in paiements]
 
 
 

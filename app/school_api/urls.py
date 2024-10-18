@@ -4,31 +4,34 @@ from . import views
 
 
 urlpatterns = [
-    path('list_create_etudiants/', views.list_create_etudiants),
-    path('etudiant_detail/', views.etudiant_detail),
 
-    path('professeurs/', views.professeur_list),
-    path('professeur_detail/', views.professeur_detail),
+    path('list_create_etudiant/', views.list_create_etudiant),
+    path('update_delete_etudiant/', views.update_delete_etudiant),
 
-    path('niveaux/', views.niveau_list),
-    path('niveau_detail/', views.niveau_detail),
+    path('list_create_professeur/', views.list_create_professeur),
+    path('update_delete_professeur/', views.update_delete_professeur),
 
-    path('filieres/', views.filiere_list),
-    path('filiere_detail/', views.filiere_detail),
+    path('list_create_niveau/', views.list_create_niveau),
+    path('update_delete_niveau/', views.update_delete_niveau),
 
-    path('matieres/', views.matiere_list),
-    path('matiere_detail', views.matiere_detail),
+    path('list_create_filiere/', views.list_create_filiere),
+    path('update_delete_filiere/', views.update_delete_filiere),
 
-    path('groupes/', views.list_create_groupe),
-    path('groupe_detail/', views.groupe_detail),
+    path('list_create_matiere/', views.list_create_matiere),
+    path('update_delete_matiere/', views.update_delete_matiere),
 
-    path('assign_student/', views.assign_etudiant_group),
-    path('groupes-with-etudiants/', views.list_groupes_with_etudiants, name='list-groupes-with-etudiants'),
-    path('groupe-with-etudiants/', views.groupe_with_etudiants, name='groupe-with-etudiants'),
+    path('list_create_groupe/', views.list_create_groupe),
+    path('update_delete_groupe/', views.update_delete_groupe),
+
+
+    path('assign_etudiant_group/', views.assign_etudiant_group),
+    path('unassign_etudiant_from_groupe/', views.unassign_etudiant_from_groupe),
+    path('list_groupes_with_etudiants/', views.list_groupes_with_etudiants),
+    
+    #path('groupes-with-etudiants/', views.list_groupes_with_etudiants, name='list-groupes-with-etudiants'),
+    #path('groupe-with-etudiants/', views.groupe_with_etudiants, name='groupe-with-etudiants'),
 
     path('list_create_paiement/', views.list_create_paiement),
     path('list_comissions/', views.list_comissions)
-
-
 
 ]
