@@ -70,7 +70,7 @@ def update_delete_etudiant(request):
     - Deletes a specific student.
 
     Required:
-    - 'id' in request.data
+    - 'id' in query parameters
 
     Returns:
     - 200 OK: Successful PUT request
@@ -78,7 +78,10 @@ def update_delete_etudiant(request):
     - 400 Bad Request: Invalid data in PUT request
     - 404 Not Found: Student with given ID not found
     """
-    id = int(request.data['id'])
+    id = request.query_params.get('id')
+    if not id:
+        return Response({"error": "ID is required in query parameters"}, status=status.HTTP_400_BAD_REQUEST)
+
     try:
         etudiant = Etudiant.objects.get(pk=id)
     except Etudiant.DoesNotExist:
@@ -150,7 +153,7 @@ def update_delete_professeur(request):
     - Deletes a specific professor.
 
     Required:
-    - 'id' in request.data
+    - 'id' in query parameters
 
     Returns:
     - 200 OK: Successful PUT request
@@ -158,7 +161,10 @@ def update_delete_professeur(request):
     - 400 Bad Request: Invalid data in PUT request
     - 404 Not Found: Professor with given ID not found
     """
-    id = int(request.data['id'])
+    id = request.query_params.get('id')
+    if not id:
+        return Response({"error": "ID is required in query parameters"}, status=status.HTTP_400_BAD_REQUEST)
+
     try:
         professeur = Professeur.objects.get(pk=id)
     except Professeur.DoesNotExist:
@@ -218,7 +224,7 @@ def update_delete_niveau(request):
     - Deletes a specific level.
 
     Required:
-    - 'id' in request.data
+    - 'id' in query parameters
 
     Returns:
     - 200 OK: Successful PUT request
@@ -226,7 +232,10 @@ def update_delete_niveau(request):
     - 400 Bad Request: Invalid data in PUT request
     - 404 Not Found: Level with given ID not found
     """
-    id = request.data['id']
+    id = request.query_params.get('id')
+    if not id:
+        return Response({"error": "ID is required in query parameters"}, status=status.HTTP_400_BAD_REQUEST)
+
     try:
         niveau = Niveau.objects.get(pk=id)
     except Niveau.DoesNotExist:
@@ -286,7 +295,7 @@ def update_delete_filiere(request):
     - Deletes a specific filiere.
 
     Required:
-    - 'id' in request.data
+    - 'id' in query parameters
 
     Returns:
     - 200 OK: Successful PUT request
@@ -294,7 +303,10 @@ def update_delete_filiere(request):
     - 400 Bad Request: Invalid data in PUT request
     - 404 Not Found: Filiere with given ID not found
     """
-    id = request.data['id']
+    id = request.query_params.get('id')
+    if not id:
+        return Response({"error": "ID is required in query parameters"}, status=status.HTTP_400_BAD_REQUEST)
+
     try:
         filiere = Filiere.objects.get(pk=id)
     except Filiere.DoesNotExist:
@@ -355,7 +367,7 @@ def update_delete_matiere(request):
     - Deletes a specific matiere.
 
     Required:
-    - 'id' in request.data
+    - 'id' in query parameters
 
     Returns:
     - 200 OK: Successful PUT request
@@ -363,7 +375,10 @@ def update_delete_matiere(request):
     - 400 Bad Request: Invalid data in PUT request
     - 404 Not Found: Matiere with given ID not found
     """
-    id = request.data['id']
+    id = request.query_params.get('id')
+    if not id:
+        return Response({"error": "ID is required in query parameters"}, status=status.HTTP_400_BAD_REQUEST)
+
     try:
         matiere = Matiere.objects.get(pk=id)
     except Matiere.DoesNotExist:
@@ -429,7 +444,7 @@ def update_delete_groupe(request):
     - Deletes a specific group.
 
     Required:
-    - 'id' in request.data
+    - 'id' in query parameters
 
     Returns:
     - 200 OK: Successful PUT request
@@ -437,10 +452,15 @@ def update_delete_groupe(request):
     - 400 Bad Request: Invalid data in PUT request
     - 404 Not Found: Group with given ID not found
     """
-    id = request.data['id']
-    # Fetch the Groupe object, or return 404 if not found
-    groupe = get_object_or_404(Groupe, pk=id)
-    
+    id = request.query_params.get('id')
+    if not id:
+        return Response({"error": "ID is required in query parameters"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        groupe = Groupe.objects.get(pk=id)
+    except Groupe.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
     if request.method == 'PUT':
         serializer = GroupeSerializer(groupe, data=request.data)
         if serializer.is_valid():
@@ -569,7 +589,7 @@ def list_create_paiement(request):
         paiements = Paiement.objects.all()
         serializer = PaiementSerializer(paiements, many=True)
         return Response(serializer.data)
-
+    
     # Handle POST request: Create a new payment
     elif request.method == 'POST':
         serializer = PaiementSerializer(data=request.data)
@@ -577,7 +597,6 @@ def list_create_paiement(request):
             serializer.save()  # This will create the payment and trigger the auto-creation of the commission
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
 
 """ -------------------------------------                Comissions          ---------------------------------------"""
 
@@ -601,6 +620,12 @@ def list_comissions(request):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     return Response(status=status.HTTP_400_BAD_REQUEST) 
+
+
+
+
+
+
 
 
 
