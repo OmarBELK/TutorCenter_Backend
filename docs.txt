@@ -1,0 +1,186 @@
+1 ### list_create_etudiant
+This view handles both listing all students and creating a new student.
+
+
+- **GET**: 
+  - If 'id' is provided in query params, returns details of a specific student.
+  - Otherwise, returns a list of all students with their details.
+- **POST**: Creates a new student.
+- **Returns**:
+  - 200 OK: Successful GET request
+  - 201 Created: Successful POST request
+  - 400 Bad Request: Invalid data in POST request
+  - 404 Not Found: Student with given ID not found
+
+
+2 ### update_delete_etudiant
+This view handles updating and deleting a specific student.
+
+- **PUT**: Updates details of a specific student.
+- **DELETE**: Deletes a specific student.
+- **Required**: 'id' in query parameters
+- **Returns**:
+  - 200 OK: Successful PUT request
+  - 204 No Content: Successful DELETE request
+  - 400 Bad Request: Invalid data in PUT request
+  - 404 Not Found: Student with given ID not found
+
+
+
+
+3 ### list_create_professeur
+This view handles both listing all professors and creating a new professor.
+
+- **GET**: 
+  - If 'id' is provided in query params, returns details of a specific professor.
+  - Otherwise, returns a list of all professors with their details.
+- **POST**: Creates a new professor.
+- **Returns**:
+  - 200 OK: Successful GET request
+  - 201 Created: Successful POST request
+  - 400 Bad Request: Invalid data in POST request
+  - 404 Not Found: Professor with given ID not found
+
+
+4 ### update_delete_professeur
+This view handles updating and deleting a specific professor.
+
+- **PUT**: Updates details of a specific professor.
+- **DELETE**: Deletes a specific professor.
+- **Required**: 'id' in query parameters
+- **Returns**:
+  - 200 OK: Successful PUT request
+  - 204 No Content: Successful DELETE request
+  - 400 Bad Request: Invalid data in PUT request
+  - 404 Not Found: Professor with given ID not found
+
+
+
+5### list_create_niveau
+This view handles both listing all levels and creating a new level.
+
+- **GET**: Returns a list of all levels.
+- **POST**: Creates a new level.
+- **Returns**:
+  - 200 OK: Successful GET request
+  - 201 Created: Successful POST request
+  - 400 Bad Request: Invalid data in POST request
+
+
+6 ### update_delete_niveau
+This view handles updating and deleting a specific level.
+
+- **PUT**: Updates details of a specific level.
+- **DELETE**: Deletes a specific level.
+- **Required**: 'id' in query parameters
+- **Returns**:
+  - 200 OK: Successful PUT request
+  - 204 No Content: Successful DELETE request
+  - 400 Bad Request: Invalid data in PUT request
+  - 404 Not Found: Level with given ID not found
+
+
+7### list_create_filiere
+This view handles both listing all filieres and creating a new filiere.
+
+- **GET**: Returns a list of all filieres.
+- **POST**: Creates a new filiere.
+- **Returns**:
+  - 200 OK: Successful GET request
+  - 201 Created: Successful POST request
+  - 400 Bad Request: Invalid data in POST request
+
+
+8 ### update_delete_filiere
+This view handles updating and deleting a specific filiere.
+
+- **PUT**: Updates details of a specific filiere.
+- **DELETE**: Deletes a specific filiere.
+- **Required**: 'id' in query parameters
+- **Returns**:
+  - 200 OK: Successful PUT request
+  - 204 No Content: Successful DELETE request
+  - 400 Bad Request: Invalid data in PUT request
+  - 404 Not Found: Filiere with given ID not found
+
+
+
+9 ### list_create_matiere
+This view handles both listing all subjects and creating a new subject.
+
+- **GET**: Returns a list of all subjects.
+- **POST**: Creates a new subject.
+- **Returns**:
+  - 200 OK: Successful GET request
+  - 201 Created: Successful POST request
+  - 400 Bad Request: Invalid data in POST request
+
+
+10 ### update_delete_matiere
+This view handles updating and deleting a specific subject.
+
+- **PUT**: Updates details of a specific subject.
+- **DELETE**: Deletes a specific subject.
+- **Required**: 'id' in query parameters
+- **Returns**:
+  - 200 OK: Successful PUT request
+  - 204 No Content: Successful DELETE request
+  - 400 Bad Request: Invalid data in PUT request
+  - 404 Not Found: Subject with given ID not found
+
+
+11 ### list_create_groupe
+This view handles both listing all groups and creating a new group.
+
+- **GET**: Returns a list of all groups with their details.
+- **POST**: Creates a new group.
+- **Returns**:
+  - 200 OK: Successful GET request
+  - 201 Created: Successful POST request
+  - 400 Bad Request: Invalid data in POST request
+
+
+12 ### update_delete_groupe
+This view handles updating and deleting a specific group.
+
+- **PUT**: Updates details of a specific group.
+- **DELETE**: Deletes a specific group.
+- **Required**: 'id' in query parameters
+- **Returns**:
+  - 200 OK: Successful PUT request
+  - 204 No Content: Successful DELETE request
+  - 400 Bad Request: Invalid data in PUT request
+  - 404 Not Found: Group with given ID not found
+
+
+13 ### list_groupes_with_etudiants
+This view lists all students or students of a specific group.
+
+- **GET**:
+  - If 'groupe_id' is provided in query params, returns students of that specific group.
+  - Otherwise, returns a list of all groups with their students.
+- **Returns**:
+  - 200 OK: Successful GET request
+  - 404 Not Found: Group with given ID not found
+  
+
+14 ### list_create_paiement
+This view handles both listing and creating payments.
+
+- **GET**: List all payments.
+- **POST**: Create a new payment, and automatically generate a commission for the professor associated with the specified group.
+- **Returns**:
+  - 200 OK: Successful GET request
+  - 201 Created: Successful POST request
+  - 400 Bad Request: Invalid data in POST request
+
+
+
+
+15 ### list_comissions
+This view lists all commissions.
+
+- **GET**: Returns a list of all commissions with their details.
+- **Returns**:
+  - 200 OK: Successful GET request
+  - 400 Bad Request: Invalid request method
