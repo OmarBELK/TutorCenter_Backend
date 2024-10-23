@@ -623,8 +623,54 @@ def list_comissions(request):
 
 
 
+""" -------------------------------------                Event          ---------------------------------------"""
 
+@api_view(['GET', 'POST'])
+def list_create_event(request):
+    if request.method == 'GET':
+        events = Event.objects.all()
+        groupe_id = request.query_params.get('groupe_id')
+        professeur_id = request.query_params.get('professeur_id')
 
+        if groupe_id:
+            events = events.filter(groupe_id=groupe_id)
+        if professeur_id:
+            events = events.filter(professeur_id=professeur_id)
+
+        serializer = EventSerializer(events, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    elif request.method == 'POST':
+        serializer = EventSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def update_delete_event(request):
+    pk = request.query_params.get('pk')
+    if not pk:
+        return Response({"error": "Event ID (pk) is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        event = Event.objects.get(pk=pk)
+    except Event.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        serializer = EventSerializer(event)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        serializer = EventSerializer(event, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        event.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 

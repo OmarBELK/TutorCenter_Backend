@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Etudiant, Professeur, Comission, Paiement
 from .models import Niveau, Filiere, Matiere, Groupe, EtudiantGroupe
 from rest_framework import serializers
-from .models import Paiement, Comission, Groupe
+from .models import Paiement, Comission, Groupe, Event
 
 
 
@@ -71,10 +71,10 @@ class ProfesseurSerializer(serializers.ModelSerializer):
 class ProfesseurDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Professeur
-        fields = ['id', 'nom', 'prenom', 'telephone', 'adresse', 'date_naissance', 'sexe', 'nationalite', 'specialite', 'comission_fixe', 'groupes', 'commissions']
+        fields = ['id', 'nom', 'prenom', 'telephone', 'adresse', 'date_naissance', 'sexe', 'nationalite', 'specialite', 'groupes', 'commissions']
 
     groupes    = serializers.SerializerMethodField()
-    comissions = serializers.SerializerMethodField()
+    commissions = serializers.SerializerMethodField()
 
     def get_groupes(self, obj):
         groupes = Groupe.objects.filter(professeur=obj)
@@ -85,7 +85,7 @@ class ProfesseurDetailSerializer(serializers.ModelSerializer):
             'filiere': g.filiere.nom_filiere,
             'niveau': g.niveau.nom_niveau,
             'max_etudiants': g.max_etudiants,
-            'etudiants': g.etudiants.count()
+            'commission_fixe': g.commission_fixe,
         } for g in groupes]
 
     def get_commissions(self, obj):
@@ -95,75 +95,10 @@ class ProfesseurDetailSerializer(serializers.ModelSerializer):
             'montant': c.montant,
             'date_comission': c.date_comission,
             'statut_comission': c.statut_comission,
-            'etudiant': f"{c.etudiant.nom} {c.etudiant.prenom}"
+            'etudiant': f"{c.etudiant.nom} {c.etudiant.prenom}",
+            'groupe': c.groupe.id,
         } for c in commissions]
         
-
-
-
-
-
-
-
-
-class ComissionSerializer(serializers.ModelSerializer):
-
-    professeur = ProfesseurSerializer(read_only=True)
-    etudiant   = EtudiantSerializer(read_only=True) 
-
-    class Meta:
-        model = Comission
-        fields = ['id', 'montant', 'date_comission', 'statut_comission', 'professeur', 'etudiant']
-
-
-
-class PaiementSerializer(serializers.ModelSerializer):
-    etudiant_id = serializers.IntegerField(write_only=True)
-    groupe_id = serializers.IntegerField(write_only=True)
-
-    class Meta:
-        model = Paiement
-        fields = ['id', 'montant', 'date_paiement', 'statut_paiement', 'etudiant_id', 'groupe_id', 'commission_percentage']
-
-    def validate(self, data):
-        etudiant_id = data.get('etudiant_id')
-        groupe_id = data.get('groupe_id')
-
-        try:
-            etudiant = Etudiant.objects.get(pk=etudiant_id)
-            groupe = Groupe.objects.get(pk=groupe_id)
-        except (Etudiant.DoesNotExist, Groupe.DoesNotExist):
-            raise serializers.ValidationError("Invalid etudiant_id or groupe_id")
-
-        if not EtudiantGroupe.objects.filter(etudiant=etudiant, groupe=groupe).exists():
-            raise serializers.ValidationError(
-                f"The student with ID {etudiant_id} is not assigned to the group with ID {groupe_id}."
-            )
-        return data
-
-    def create(self, validated_data):
-        etudiant_id = validated_data.pop('etudiant_id')
-        groupe_id = validated_data.pop('groupe_id')
-        etudiant = Etudiant.objects.get(pk=etudiant_id)
-        groupe = Groupe.objects.get(pk=groupe_id)
-
-        paiement = Paiement.objects.create(etudiant=etudiant, groupe=groupe, **validated_data)
-
-        professeur = groupe.professeur
-        if professeur:
-            commission_amount = self.calculate_commission_amount(paiement.montant, paiement.commission_percentage)
-            Comission.objects.create(
-                montant=commission_amount,
-                date_comission=paiement.date_paiement,
-                statut_comission=paiement.statut_paiement,
-                professeur=professeur,
-                etudiant=etudiant
-            )
-
-        return paiement
-
-    def calculate_commission_amount(self, paiement_amount, commission_percentage):
-        return paiement_amount * (commission_percentage / 100)
 
 class NiveauSerializer(serializers.ModelSerializer):
     class Meta:
@@ -202,7 +137,7 @@ class GroupeDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Groupe
-        fields = ['id','nom_groupe', 'professeur', 'niveau', 'max_etudiants', 'filiere', 'matiere']
+        fields = ['id','nom_groupe', 'professeur', 'commission_fixe','niveau', 'max_etudiants', 'filiere', 'matiere']
 
 
 class GroupeWithEtudiantsSerializer(serializers.ModelSerializer):
@@ -226,66 +161,72 @@ class GroupeWithEtudiantsSerializer(serializers.ModelSerializer):
 """ ---------------------------------------  Update Serializer for Paiement ------------------------------------"""
 
 
+class PaiementSerializer(serializers.ModelSerializer):
+    etudiant_id = serializers.IntegerField(write_only=True)
+    groupe_id = serializers.IntegerField(write_only=True)
 
-# class PaiementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Paiement
+        fields = ['id', 'montant', 'date_paiement', 'statut_paiement', 'etudiant_id', 'groupe_id', 'commission_percentage']
 
-#     etudiant = EtudiantSerializer(read_only=True)
-#     groupe   = GroupeSerializer(read_only=True)
+    def validate(self, data):
+        etudiant_id = data.get('etudiant_id')
+        groupe_id = data.get('groupe_id')
 
-#     class Meta:
-#         model = Paiement
-#         fields = ['id', 'montant', 'date_paiement', 'statut_paiement', 'etudiant', 'groupe', 'commission_percentage']
+        try:
+            etudiant = Etudiant.objects.get(pk=etudiant_id)
+            groupe = Groupe.objects.get(pk=groupe_id)
+        except (Etudiant.DoesNotExist, Groupe.DoesNotExist):
+            raise serializers.ValidationError("Invalid etudiant_id or groupe_id")
 
-#     def validate(self, data):
-#         """
-#         Ensure that the student belongs to the specific groupe
-#         """
-#         etudiant = data['etudiant']
-#         groupe   = data['groupe']
+        if not EtudiantGroupe.objects.filter(etudiant=etudiant, groupe=groupe).exists():
+            raise serializers.ValidationError(
+                f"The student with ID {etudiant_id} is not assigned to the group with ID {groupe_id}."
+            )
+        return data
 
-#         if not EtudiantGroupe.objects.filter(etudiant=etudiant, groupe=groupe).exists():
-#             raise serializers.ValidationError(
-#                 {"detail": f"The student with ID {etudiant.id} is not assigned to the group with ID {groupe.id}."}
-#             )
-#         return data
+    def create(self, validated_data):
+        etudiant_id = validated_data.pop('etudiant_id')
+        groupe_id = validated_data.pop('groupe_id')
+        etudiant = Etudiant.objects.get(pk=etudiant_id)
+        groupe = Groupe.objects.get(pk=groupe_id)
 
-#     def create(self, validated_data):
-#         # Create the Paiement object
-#         paiement = Paiement.objects.create(**validated_data)
+        paiement = Paiement.objects.create(etudiant=etudiant, groupe=groupe, **validated_data)
 
-#         # Fetch the group and its professor directly using groupe_id from the paiement
-#         groupe = paiement.groupe  # Get the group directly from the payment
-#         professeur = self.get_professeur_for_groupe(groupe)  # Fetch the professor for the specified group
+        professeur = groupe.professeur
+        if professeur:
+            commission_amount = self.calculate_commission_amount(paiement.montant, groupe.commission_fixe, paiement.commission_percentage)
+            Comission.objects.create(
+                montant=commission_amount,
+                date_comission=paiement.date_paiement,
+                statut_comission=paiement.statut_paiement,
+                professeur=professeur,
+                etudiant=etudiant,
+                groupe=groupe
+            )
+        return paiement
+    
+    def calculate_commission_amount(self, paiement_amount, commission_fixe, commission_percentage):
+        commission_base = min(paiement_amount, commission_fixe)
+        return commission_base * (commission_percentage / 100)
 
-#         # Generate the commission for the professor
-#         if professeur:
-#             commission_amount = self.calculate_commission_amount(paiement.montant, paiement.commission_percentage)
-#             Comission.objects.create(
-#                 montant=commission_amount,
-#                 date_comission=paiement.date_paiement,  # Set the date to payment date
-#                 statut_comission=paiement.statut_paiement,  # The Same 
-#                 professeur=professeur,
-#                 etudiant=paiement.etudiant  # Link the same student
-#             )
+class ComissionSerializer(serializers.ModelSerializer):
 
-#         return paiement
+    professeur = ProfesseurSerializer(read_only=True)
+    etudiant   = EtudiantSerializer(read_only=True) 
+    groupe     = GroupeSerializer(read_only=True)
 
-#     def get_professeur_for_groupe(self, groupe):
-#         """
-#         Retrieve the professor for a specific group.
-#         """
-#         try:
-#             return groupe.professeur  # Directly get the professor linked to the group
-#         except Groupe.DoesNotExist:
-#             return None
-
-#     def calculate_commission_amount(self, paiement_amount, commission_percentage):
-#         # Calculate the commission amount based on the percentage
-#         return paiement_amount * (commission_percentage / 100)
-
-
-
-
+    class Meta:
+        model = Comission
+        fields = ['id', 'montant', 'date_comission', 'statut_comission', 'professeur', 'etudiant', 'groupe']
 
 
 
+
+
+
+
+class EventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Event
+        fields = ['id', 'title', 'start_time', 'end_time', 'description', 'groupe', 'professeur']    

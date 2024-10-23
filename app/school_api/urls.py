@@ -28,10 +28,11 @@ urlpatterns = [
     path('unassign_etudiant_from_groupe/', views.unassign_etudiant_from_groupe),
     path('list_groupes_with_etudiants/', views.list_groupes_with_etudiants),
     
-    #path('groupes-with-etudiants/', views.list_groupes_with_etudiants, name='list-groupes-with-etudiants'),
-    #path('groupe-with-etudiants/', views.groupe_with_etudiants, name='groupe-with-etudiants'),
-
     path('list_create_paiement/', views.list_create_paiement),
-    path('list_comissions/', views.list_comissions)
+    path('list_comissions/', views.list_comissions),
+
+
+    path('list_create_event/', views.list_create_event),
+    path('update_delete_event/', views.update_delete_event),
 
 ]
