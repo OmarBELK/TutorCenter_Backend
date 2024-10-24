@@ -48,7 +48,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'school_api'
+    'school_api',
+    'django_filters',
 ]
 
 MIDDLEWARE = [
@@ -140,3 +141,8 @@ MEDIA_URL = '/static/media/'
 MEDIA_ROOT = '/vol/web/media'
 STATIC_ROOT = '/vol/web/static'
 
+# Add this REST_FRAMEWORK configuration
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    # You can add other REST_FRAMEWORK settings here as needed
+}

@@ -1,11 +1,15 @@
 from django.shortcuts import render
-
 # from rest_framework
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.shortcuts import get_object_or_404
-
+from rest_framework import generics, filters
+from django_filters.rest_framework import DjangoFilterBackend
+from .models import Comission
+from .serializers import ComissionSerializer
+from django.db.models import Sum
+from datetime import datetime
 
 """ ------------------------------------------------- Etudiant Views ----------------------------------------------------"""
 from .models import *
@@ -598,6 +602,41 @@ def list_create_paiement(request):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class PaiementListView(generics.ListAPIView):
+    queryset = Paiement.objects.all()
+    serializer_class = PaiementSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['etudiant', 'groupe', 'statut_paiement']
+    ordering_fields = ['date_paiement', 'montant']
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Date range filtering
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date and end_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(date_paiement__range=[start_date, end_date])
+
+        # Aggregation
+        total_amount = queryset.aggregate(total=Sum('montant'))['total']
+
+        # Pagination
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response({
+                'results': serializer.data,
+                'total_amount': total_amount
+            })
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'results': serializer.data,
+            'total_amount': total_amount
+        })
 """ -------------------------------------                Comissions          ---------------------------------------"""
 
 
@@ -622,6 +661,41 @@ def list_comissions(request):
     return Response(status=status.HTTP_400_BAD_REQUEST) 
 
 
+class ComissionListView(generics.ListAPIView):
+    queryset = Comission.objects.all()
+    serializer_class = ComissionSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['professeur', 'etudiant', 'groupe']
+    ordering_fields = ['date_comission', 'montant']
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Date range filtering
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date and end_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(date_comission__range=[start_date, end_date])
+
+        # Aggregation
+        total_amount = queryset.aggregate(total=Sum('montant'))['total']
+
+        # Pagination
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response({
+                'results': serializer.data,
+                'total_amount': total_amount
+            })
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'results': serializer.data,
+            'total_amount': total_amount
+        })
 
 """ -------------------------------------                Event          ---------------------------------------"""
 
@@ -671,6 +745,8 @@ def update_delete_event(request):
     elif request.method == 'DELETE':
         event.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 
 
 

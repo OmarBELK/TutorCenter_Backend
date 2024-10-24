@@ -19,7 +19,7 @@ class EtudiantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Etudiant
-        fields = ['id', 'nom', 'prenom', 'date_naissance', 'groupe_id', 'telephone', 'adresse', 'sexe', 'nationalite', 'contact_urgence']
+        fields = ['id', 'nom', 'prenom', 'date_naissance', 'groupe_id', 'telephone', 'adresse', 'sexe', 'nationalite', 'contact_urgence', 'created_at']
 
     def create(self, validated_data):
         groupe_id = validated_data.pop('groupe_id', None)
@@ -33,7 +33,7 @@ class EtudiantSerializer(serializers.ModelSerializer):
 class EtudiantDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Etudiant
-        fields = ['id', 'nom', 'prenom', 'date_naissance','telephone', 'adresse', 'sexe', 'nationalite', 'contact_urgence','groupes', 'paiements',]
+        fields = ['id', 'nom', 'prenom', 'date_naissance','telephone', 'adresse', 'sexe', 'nationalite', 'contact_urgence','groupes', 'paiements', 'created_at']
 
     groupes   = serializers.SerializerMethodField()
     paiements = serializers.SerializerMethodField()
@@ -71,7 +71,7 @@ class ProfesseurSerializer(serializers.ModelSerializer):
 class ProfesseurDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Professeur
-        fields = ['id', 'nom', 'prenom', 'telephone', 'adresse', 'date_naissance', 'sexe', 'nationalite', 'specialite', 'groupes', 'commissions']
+        fields = ['id', 'nom', 'prenom', 'telephone', 'adresse', 'date_naissance', 'sexe', 'nationalite', 'specialite', 'groupes', 'commissions', 'created_at']
 
     groupes    = serializers.SerializerMethodField()
     commissions = serializers.SerializerMethodField()
@@ -126,7 +126,7 @@ class EtudiantGroupeSerializer(serializers.ModelSerializer):
 class GroupeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Groupe
-        fields = ['id', 'nom_groupe', 'professeur', 'niveau', 'max_etudiants', 'filiere', 'matiere']
+        fields = ['id', 'nom_groupe', 'professeur', 'niveau', 'max_etudiants', 'filiere', 'matiere', 'commission_fixe']
 
 class GroupeDetailSerializer(serializers.ModelSerializer):
 
@@ -165,9 +165,12 @@ class PaiementSerializer(serializers.ModelSerializer):
     etudiant_id = serializers.IntegerField(write_only=True)
     groupe_id = serializers.IntegerField(write_only=True)
 
+    etudiant = EtudiantSerializer(read_only=True)
+    groupe   = GroupeSerializer(read_only=True)
+
     class Meta:
         model = Paiement
-        fields = ['id', 'montant', 'date_paiement', 'statut_paiement', 'etudiant_id', 'groupe_id', 'commission_percentage']
+        fields = ['id', 'montant', 'date_paiement', 'statut_paiement','etudiant', 'groupe', 'etudiant_id', 'groupe_id', 'commission_percentage']
 
     def validate(self, data):
         etudiant_id = data.get('etudiant_id')

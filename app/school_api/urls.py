@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import ComissionListView, PaiementListView
 
 
 
@@ -34,5 +35,8 @@ urlpatterns = [
 
     path('list_create_event/', views.list_create_event),
     path('update_delete_event/', views.update_delete_event),
+
+    path('commissions/', ComissionListView.as_view(), name='commission-list'),
+    path('paiements/', PaiementListView.as_view(), name='paiement-list'),
 
 ]

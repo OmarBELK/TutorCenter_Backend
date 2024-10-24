@@ -14,6 +14,7 @@ class Etudiant(models.Model):
     sexe = models.CharField(max_length=10, choices=[('M', 'Male'), ('F', 'Female')], null=True, blank=True)
     nationalite = models.CharField(max_length=100, null=True, blank=True, default='Marocain')
     contact_urgence = models.CharField(max_length=100, null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self) -> str:
         return f"{self.nom} {self.prenom}"
@@ -28,6 +29,7 @@ class Professeur(models.Model):
     sexe = models.CharField(max_length=10, choices=[('M', 'Male'), ('F', 'Female')], null=True, blank=True)
     nationalite = models.CharField(max_length=100, null=True, blank=True, default='Marocain')
     specialite = models.CharField()
+    created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return f"{self.nom} {self.prenom}"
@@ -64,7 +66,8 @@ class Groupe(models.Model):
     max_etudiants = models.IntegerField()
     filiere = models.ForeignKey(Filiere, on_delete=models.CASCADE)
     matiere = models.ForeignKey(Matiere, on_delete=models.CASCADE)
-    commission_fixe = models.FloatField(default=120.0)  # Add this line
+    commission_fixe = models.FloatField(default=120.0)  
+    created_at = models.DateTimeField(default=timezone.now)  
 
 
     def __str__(self):
