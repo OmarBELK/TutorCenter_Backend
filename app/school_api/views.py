@@ -10,45 +10,55 @@ from .models import Comission
 from .serializers import ComissionSerializer
 from django.db.models import Sum
 from datetime import datetime
-
-""" ------------------------------------------------- Etudiant Views ----------------------------------------------------"""
 from .models import *
 from .serializers import *
+from rest_framework import generics, filters, status
+from rest_framework.response import Response
+from .models import Groupe
+from .serializers import GroupeWithEtudiantsSerializer
+from django.utils import timezone
+from django.db.models import Count
+""" ------------------------------------------------- Etudiant Views ----------------------------------------------------"""
 
-@api_view(['GET', 'POST'])
-def list_create_etudiant(request):
+class EtudiantListView(generics.ListAPIView):
+    queryset = Etudiant.objects.all()
+    serializer_class = EtudiantSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['id', 'nom', 'prenom', 'sexe', 'nationalite']  # Added 'id' here
+    ordering_fields = ['id', 'nom', 'prenom', 'created_at']  # Also added 'id' here for ordering
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Date range filtering for created_at
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date and end_date:
+            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__range=[start_date, end_date])
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
+@api_view(['POST'])
+def create_etudiant(request):
     """
-    List all students or create a new student.
-
-    GET:
-    - If 'id' is provided in query params, returns details of a specific student.
-    - Otherwise, returns a list of all students with their details.
+    Create a new student.
 
     POST:
     - Creates a new student.
 
     Returns:
-    - 200 OK: Successful GET request
     - 201 Created: Successful POST request
     - 400 Bad Request: Invalid data in POST request
-    - 404 Not Found: Student with given ID not found
     """
-    if request.method == 'GET':
-        if 'id' in request.query_params:
-            id = int(request.query_params['id'])
-            try:
-                etudiant = Etudiant.objects.get(pk=id)
-                serializer = EtudiantDetailSerializer(etudiant)
-                return Response(serializer.data, status = status.HTTP_200_OK)
-            except Etudiant.DoesNotExist:
-                return Response(status = status.HTTP_404_NOT_FOUND)
-        else:
-            # Get all students with details
-            etudiants = Etudiant.objects.all()
-            serializer = EtudiantSerializer(etudiants, many=True)
-            return Response(serializer.data)
-        
-    elif request.method == 'POST':
+    if request.method == 'POST':
         serializer = EtudiantSerializer(data=request.data)
         if serializer.is_valid():
             etudiant = serializer.save()
@@ -62,82 +72,91 @@ def list_create_etudiant(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['PUT', 'DELETE'])
-def update_delete_etudiant(request):
+
+@api_view(['PUT'])
+def update_etudiant(request, pk):
     """
-    Update or delete a student.
+    Update an existing student.
 
     PUT:
-    - Updates details of a specific student.
-
-    DELETE:
-    - Deletes a specific student.
-
-    Required:
-    - 'id' in query parameters
+    - Updates an existing student identified by the pk (primary key).
 
     Returns:
-    - 200 OK: Successful PUT request
-    - 204 No Content: Successful DELETE request
+    - 200 OK: Successful update
     - 400 Bad Request: Invalid data in PUT request
     - 404 Not Found: Student with given ID not found
     """
-    id = request.query_params.get('id')
-    if not id:
-        return Response({"error": "ID is required in query parameters"}, status=status.HTTP_400_BAD_REQUEST)
-
     try:
-        etudiant = Etudiant.objects.get(pk=id)
+        etudiant = Etudiant.objects.get(pk=pk)
     except Etudiant.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'PUT':
-        serializer = EtudiantSerializer(etudiant, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer = EtudiantSerializer(etudiant, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    elif request.method == 'DELETE':
-        etudiant.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+@api_view(['DELETE'])
+def delete_etudiant(request, pk):
+    """
+    Delete an existing student.
 
+    DELETE:
+    - Deletes an existing student identified by the pk (primary key).
+
+    Returns:
+    - 204 No Content: Successful deletion
+    - 404 Not Found: Student with given ID not found
+    """
+    try:
+        etudiant = Etudiant.objects.get(pk=pk)
+    except Etudiant.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    etudiant.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
 """ -------------------------------------     Professeur    -----------------------------------"""
 
-@api_view(['GET', 'POST'])
-def list_create_professeur(request):
-    """
-    List all professors or create a new professor.
+class ProfesseurListView(generics.ListAPIView):
+    queryset = Professeur.objects.all()
+    serializer_class = ProfesseurSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['id', 'nom', 'prenom', 'specialite']
+    ordering_fields = ['id', 'nom', 'prenom', 'created_at']
 
-    GET:
-    - If 'id' is provided in query params, returns details of a specific professor.
-    - Otherwise, returns a list of all professors with their details.
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Date range filtering for created_at
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date and end_date:
+            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__range=[start_date, end_date])
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+@api_view(['POST'])
+def create_professeur(request):
+    """
+    Create a new professor.
 
     POST:
     - Creates a new professor.
 
     Returns:
-    - 200 OK: Successful GET request
     - 201 Created: Successful POST request
     - 400 Bad Request: Invalid data in POST request
-    - 404 Not Found: Professor with given ID not found
     """
-    if request.method == 'GET':
-        if 'id' in request.query_params:
-            id = int(request.query_params['id'])
-            try:
-                professeur = Professeur.objects.get(pk=id)
-                serializer = ProfesseurDetailSerializer(professeur)
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            except Professeur.DoesNotExist:
-                return Response(status=status.HTTP_404_NOT_FOUND)
-        else:
-            # Get all professors with details
-            professeurs = Professeur.objects.all()
-            serializer = ProfesseurSerializer(professeurs, many=True)
-            return Response(serializer.data)
-    
-    elif request.method == 'POST':
+    if request.method == 'POST':
         serializer = ProfesseurSerializer(data=request.data)
         if serializer.is_valid():
             professeur = serializer.save()
@@ -145,338 +164,426 @@ def list_create_professeur(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['PUT', 'DELETE'])
-def update_delete_professeur(request):
+from .models import Professeur
+from .serializers import ProfesseurSerializer
+
+@api_view(['PUT'])
+def update_professeur(request, pk):
     """
-    Update or delete a professor.
+    Update an existing professor.
 
     PUT:
-    - Updates details of a specific professor.
-
-    DELETE:
-    - Deletes a specific professor.
-
-    Required:
-    - 'id' in query parameters
+    - Updates an existing professor identified by the pk (primary key).
 
     Returns:
-    - 200 OK: Successful PUT request
-    - 204 No Content: Successful DELETE request
+    - 200 OK: Successful update
     - 400 Bad Request: Invalid data in PUT request
     - 404 Not Found: Professor with given ID not found
     """
-    id = request.query_params.get('id')
-    if not id:
-        return Response({"error": "ID is required in query parameters"}, status=status.HTTP_400_BAD_REQUEST)
-
     try:
-        professeur = Professeur.objects.get(pk=id)
+        professeur = Professeur.objects.get(pk=pk)
     except Professeur.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'PUT':
-        serializer = ProfesseurSerializer(professeur, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer = ProfesseurSerializer(professeur, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    elif request.method == 'DELETE':
-        professeur.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-""" -------------------------------------     Niveau    ---------------------------------------"""
-
-@api_view(['GET', 'POST'])
-def list_create_niveau(request):
+@api_view(['DELETE'])
+def delete_professeur(request, pk):
     """
-    List all levels (niveaux) or create a new level.
+    Delete an existing professor.
 
-    GET:
-    - Returns a list of all levels.
-
-    POST:
-    - Creates a new level.
+    DELETE:
+    - Deletes an existing professor identified by the pk (primary key).
 
     Returns:
-    - 200 OK: Successful GET request
+    - 204 No Content: Successful deletion
+    - 404 Not Found: Professor with given ID not found
+    """
+    try:
+        professeur = Professeur.objects.get(pk=pk)
+    except Professeur.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    professeur.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
+""" -------------------------------------     Niveau    ---------------------------------------"""
+
+from rest_framework import generics, filters, status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
+from .models import Niveau
+from .serializers import NiveauSerializer
+from django.utils import timezone
+
+class NiveauListView(generics.ListAPIView):
+    queryset = Niveau.objects.all()
+    serializer_class = NiveauSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['id', 'nom_niveau']
+    ordering_fields = ['id', 'nom_niveau', 'created_at']
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Date range filtering for created_at
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date and end_date:
+            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__range=[start_date, end_date])
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+@api_view(['POST'])
+def create_niveau(request):
+    """
+    Create a new niveau (level).
+
+    POST:
+    - Creates a new niveau.
+
+    Returns:
     - 201 Created: Successful POST request
     - 400 Bad Request: Invalid data in POST request
     """
-    if request.method == 'GET':
-        niveaux = Niveau.objects.all()
-        serializer = NiveauSerializer(niveaux, many=True)
-        return Response(serializer.data)
-    elif request.method == 'POST':
-        serializer = NiveauSerializer(data = request.data)
+    if request.method == 'POST':
+        serializer = NiveauSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            niveau = serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-@api_view(['PUT', 'DELETE'])
-def update_delete_niveau(request):
+@api_view(['PUT'])
+def update_niveau(request, pk):
     """
-    Update or delete a level.
+    Update an existing niveau.
 
     PUT:
-    - Updates details of a specific level.
-
-    DELETE:
-    - Deletes a specific level.
-
-    Required:
-    - 'id' in query parameters
+    - Updates an existing niveau identified by the pk (primary key).
 
     Returns:
-    - 200 OK: Successful PUT request
-    - 204 No Content: Successful DELETE request
+    - 200 OK: Successful update
     - 400 Bad Request: Invalid data in PUT request
-    - 404 Not Found: Level with given ID not found
+    - 404 Not Found: Niveau with given ID not found
     """
-    id = request.query_params.get('id')
-    if not id:
-        return Response({"error": "ID is required in query parameters"}, status=status.HTTP_400_BAD_REQUEST)
-
     try:
-        niveau = Niveau.objects.get(pk=id)
+        niveau = Niveau.objects.get(pk=pk)
     except Niveau.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'PUT':
-        serializer = NiveauSerializer(niveau, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    elif request.method == 'DELETE':
-        niveau.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer = NiveauSerializer(niveau, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['DELETE'])
+def delete_niveau(request, pk):
+    """
+    Delete an existing niveau.
 
+    DELETE:
+    - Deletes an existing niveau identified by the pk (primary key).
+
+    Returns:
+    - 204 No Content: Successful deletion
+    - 404 Not Found: Niveau with given ID not found
+    """
+    try:
+        niveau = Niveau.objects.get(pk=pk)
+    except Niveau.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    niveau.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 """ -------------------------------------     Filiere    ---------------------------------------"""
 
-@api_view(['GET', 'POST'])
-def list_create_filiere(request):
-    """
-    List all filieres (branches) or create a new fieliere.
+class FiliereListView(generics.ListAPIView):
+    queryset = Filiere.objects.all()
+    serializer_class = FiliereSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['id', 'nom_filiere']
+    ordering_fields = ['id', 'nom_filiere', 'created_at']
 
-    GET:
-    - Returns a list of all fielieres.
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Date range filtering for created_at
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date and end_date:
+            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__range=[start_date, end_date])
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+@api_view(['POST'])
+def create_filiere(request):
+    """
+    Create a new filiere (branch).
 
     POST:
     - Creates a new filiere.
 
     Returns:
-    - 200 OK: Successful GET request
     - 201 Created: Successful POST request
     - 400 Bad Request: Invalid data in POST request
     """
-    if request.method == 'GET':
-        filieres = Filiere.objects.all()
-        serializer = FiliereSerializer(filieres, many=True)
-        return Response(serializer.data)
-    elif request.method == 'POST':
-        serializer = FiliereSerializer(data = request.data)
+    if request.method == 'POST':
+        serializer = FiliereSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            filiere = serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['PUT', 'DELETE'])
-def update_delete_filiere(request):
+@api_view(['PUT'])
+def update_filiere(request, pk):
     """
-    Update or delete a filiere.
+    Update an existing filiere.
 
     PUT:
-    - Updates details of a specific filiere.
-
-    DELETE:
-    - Deletes a specific filiere.
-
-    Required:
-    - 'id' in query parameters
+    - Updates an existing filiere identified by the pk (primary key).
 
     Returns:
-    - 200 OK: Successful PUT request
-    - 204 No Content: Successful DELETE request
+    - 200 OK: Successful update
     - 400 Bad Request: Invalid data in PUT request
     - 404 Not Found: Filiere with given ID not found
     """
-    id = request.query_params.get('id')
-    if not id:
-        return Response({"error": "ID is required in query parameters"}, status=status.HTTP_400_BAD_REQUEST)
-
     try:
-        filiere = Filiere.objects.get(pk=id)
+        filiere = Filiere.objects.get(pk=pk)
     except Filiere.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'PUT':
-        serializer = FiliereSerializer(filiere, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    elif request.method == 'DELETE':
-        filiere.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer = FiliereSerializer(filiere, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['DELETE'])
+def delete_filiere(request, pk):
+    """
+    Delete an existing filiere.
+
+    DELETE:
+    - Deletes an existing filiere identified by the pk (primary key).
+
+    Returns:
+    - 204 No Content: Successful deletion
+    - 404 Not Found: Filiere with given ID not found
+    """
+    try:
+        filiere = Filiere.objects.get(pk=pk)
+    except Filiere.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    filiere.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
 """ -------------------------------------     Matiere    ---------------------------------------"""
 
 
 
-@api_view(['GET', 'POST'])
-def list_create_matiere(request):
-    """
-    List all subjects (matieres) or create a new subject.
+class MatiereListView(generics.ListAPIView):
+    queryset = Matiere.objects.all()
+    serializer_class = MatiereSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['id', 'nom_matiere']
+    ordering_fields = ['id', 'nom_matiere', 'created_at']
 
-    GET:
-    - Returns a list of all subjects.
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Date range filtering for created_at
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date and end_date:
+            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__range=[start_date, end_date])
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+@api_view(['POST'])
+def create_matiere(request):
+    """
+    Create a new matiere (subject).
 
     POST:
-    - Creates a new subject.
+    - Creates a new matiere.
 
     Returns:
-    - 200 OK: Successful GET request
     - 201 Created: Successful POST request
     - 400 Bad Request: Invalid data in POST request
     """
-    if request.method == 'GET':
-        matieres = Matiere.objects.all()
-        serializer = MatiereSerializer(matieres, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    elif request.method == 'POST':
-        serializer = MatiereSerializer(data = request.data)
+    if request.method == 'POST':
+        serializer = MatiereSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            matiere = serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-@api_view(['PUT', 'DELETE'])
-def update_delete_matiere(request):
+@api_view(['PUT'])
+def update_matiere(request, pk):
     """
-    Update or delete a matiere (subject).
+    Update an existing matiere.
 
     PUT:
-    - Updates details of a specific matiere.
-
-    DELETE:
-    - Deletes a specific matiere.
-
-    Required:
-    - 'id' in query parameters
+    - Updates an existing matiere identified by the pk (primary key).
 
     Returns:
-    - 200 OK: Successful PUT request
-    - 204 No Content: Successful DELETE request
+    - 200 OK: Successful update
     - 400 Bad Request: Invalid data in PUT request
     - 404 Not Found: Matiere with given ID not found
     """
-    id = request.query_params.get('id')
-    if not id:
-        return Response({"error": "ID is required in query parameters"}, status=status.HTTP_400_BAD_REQUEST)
-
     try:
-        matiere = Matiere.objects.get(pk=id)
+        matiere = Matiere.objects.get(pk=pk)
     except Matiere.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'PUT':
-        serializer = MatiereSerializer(matiere, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    elif request.method == 'DELETE':
-        matiere.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-    
+    serializer = MatiereSerializer(matiere, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['DELETE'])
+def delete_matiere(request, pk):
+    """
+    Delete an existing matiere.
+
+    DELETE:
+    - Deletes an existing matiere identified by the pk (primary key).
+
+    Returns:
+    - 204 No Content: Successful deletion
+    - 404 Not Found: Matiere with given ID not found
+    """
+    try:
+        matiere = Matiere.objects.get(pk=pk)
+    except Matiere.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    matiere.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 """ -------------------------------------     Groupe    ---------------------------------------"""
 
+class GroupeListView(generics.ListAPIView):
+    queryset = Groupe.objects.all()
+    serializer_class = GroupeDetailSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['id', 'nom_groupe', 'niveau', 'filiere']
+    ordering_fields = ['id', 'nom_groupe', 'created_at']
 
-@api_view(['GET', 'POST'])
-def list_create_groupe(request):
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Date range filtering for created_at
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date and end_date:
+            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__range=[start_date, end_date])
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+@api_view(['POST'])
+def create_groupe(request):
     """
-    List all groups or create a new group.
-
-    GET:
-    - Returns a list of all groups with their details.
+    Create a new groupe.
 
     POST:
-    - Creates a new group.
+    - Creates a new groupe.
 
     Returns:
-    - 200 OK: Successful GET request
     - 201 Created: Successful POST request
     - 400 Bad Request: Invalid data in POST request
     """
-
-    if request.method == 'GET':
-        groupes = Groupe.objects.all()
-        serializer = GroupeDetailSerializer(groupes, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
-    elif request.method == 'POST':
-        serializer = GroupeSerializer(data = request.data)
+    if request.method == 'POST':
+        serializer = GroupeSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            groupe = serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
 
-
-
-@api_view(['PUT', 'DELETE'])
-def update_delete_groupe(request):
+@api_view(['PUT'])
+def update_groupe(request, pk):
     """
-    Update or delete a group.
+    Update an existing groupe.
 
     PUT:
-    - Updates details of a specific group.
-
-    DELETE:
-    - Deletes a specific group.
-
-    Required:
-    - 'id' in query parameters
+    - Updates an existing groupe identified by the pk (primary key).
 
     Returns:
-    - 200 OK: Successful PUT request
-    - 204 No Content: Successful DELETE request
+    - 200 OK: Successful update
     - 400 Bad Request: Invalid data in PUT request
-    - 404 Not Found: Group with given ID not found
+    - 404 Not Found: Groupe with given ID not found
     """
-    id = request.query_params.get('id')
-    if not id:
-        return Response({"error": "ID is required in query parameters"}, status=status.HTTP_400_BAD_REQUEST)
-
     try:
-        groupe = Groupe.objects.get(pk=id)
+        groupe = Groupe.objects.get(pk=pk)
     except Groupe.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'PUT':
-        serializer = GroupeSerializer(groupe, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    elif request.method == 'DELETE':
-        groupe.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-    
+    serializer = GroupeSerializer(groupe, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['DELETE'])
+def delete_groupe(request, pk):
+    """
+    Delete an existing groupe.
+
+    DELETE:
+    - Deletes an existing groupe identified by the pk (primary key).
+
+    Returns:
+    - 204 No Content: Successful deletion
+    - 404 Not Found: Groupe with given ID not found
+    """
+    try:
+        groupe = Groupe.objects.get(pk=pk)
+    except Groupe.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    groupe.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
     
 """ -------------------------------------     Etudiant - Groupe    ---------------------------------------"""
 from rest_framework.exceptions import ValidationError
@@ -531,7 +638,6 @@ def unassign_etudiant_from_groupe(request):
 
 """ -------------------------------------     View to List All Groups with Their Students   ---------------------------------------"""
 
-
 @api_view(['GET'])
 def list_groupes_with_etudiants(request):
     """
@@ -558,49 +664,66 @@ def list_groupes_with_etudiants(request):
         serializer = GroupeWithEtudiantsSerializer(groupes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-# @api_view(['GET'])
-# def list_groupes_with_etudiants(request):
-#     if request.method == 'GET':
-#         groupes = Groupe.objects.all()
-#         serializer = GroupeWithEtudiantsSerializer(groupes, many=True)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-    
-
-# @api_view(['POST'])
-# def groupe_with_etudiants(request):
-#     id = request.data['id']
-#     try:
-#         groupe = Groupe.objects.get(pk = id)
-#     except Groupe.DoesNotExist:
-#             return Response(status=status.HTTP_404_NOT_FOUND)
-    
-#     serializer = GroupeWithEtudiantsSerializer(groupe)
-#     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class GroupeWithEtudiantsListView(generics.ListAPIView):
+    queryset = Groupe.objects.all()
+    serializer_class = GroupeWithEtudiantsSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['id', 'nom_groupe', 'niveau', 'filiere']
+    ordering_fields = ['id', 'nom_groupe', 'created_at']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Check if a specific groupe_id is requested
+        groupe_id = self.request.query_params.get('groupe_id')
+        if groupe_id:
+            queryset = queryset.filter(id=groupe_id)
+
+        # Date range filtering for created_at
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date and end_date:
+            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__range=[start_date, end_date])
+
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Check if a specific groupe_id is requested
+        groupe_id = self.request.query_params.get('groupe_id')
+        if groupe_id:
+            try:
+                groupe = queryset.get(id=groupe_id)
+                serializer = self.get_serializer(groupe)
+                return Response(serializer.data)
+            except Groupe.DoesNotExist:
+                return Response({"error": "Group not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Aggregation
+        total_groups = queryset.count()
+        total_students = queryset.aggregate(total_students=Count('etudiants'))['total_students']
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response({
+                'results': serializer.data,
+                'total_groups': total_groups,
+                'total_students': total_students
+            })
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'results': serializer.data,
+            'total_groups': total_groups,
+            'total_students': total_students
+        })
 """ -------------------------------------                Paiement          ---------------------------------------"""
-
-@api_view(['GET', 'POST'])
-def list_create_paiement(request):
-    """
-    Handle both listing and creating paiements.
-    - GET: List all paiements.
-    - POST: Create a new paiement, and automatically generate a commission for the professor
-            associated with the specified group.
-    """
-    # Handle GET request: List all payments
-    if request.method == 'GET':
-        paiements = Paiement.objects.all()
-        serializer = PaiementSerializer(paiements, many=True)
-        return Response(serializer.data)
-    
-    # Handle POST request: Create a new payment
-    elif request.method == 'POST':
-        serializer = PaiementSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()  # This will create the payment and trigger the auto-creation of the commission
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PaiementListView(generics.ListAPIView):
     queryset = Paiement.objects.all()
@@ -637,28 +760,27 @@ class PaiementListView(generics.ListAPIView):
             'results': serializer.data,
             'total_amount': total_amount
         })
-""" -------------------------------------                Comissions          ---------------------------------------"""
-
-
-@api_view(['GET'])
-def list_comissions(request):
-    """
-    List all commissions.
-
-    GET:
-    - Returns a list of all commissions with their details.
-
-    Returns:
-    - 200 OK: Successful GET request
-    - 400 Bad Request: Invalid request method
-    """
-
-    if request.method == 'GET':
-        comissions = Comission.objects.all()
-        serializer = ComissionSerializer(comissions, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
     
-    return Response(status=status.HTTP_400_BAD_REQUEST) 
+
+@api_view(['POST'])
+def create_paiement(request):
+    """
+    Create a new paiement.
+    
+    POST:
+    - Creates a new paiement, and automatically generates a commission for the professor
+      associated with the specified group.
+    
+    Returns:
+    - 201 Created: Successful POST request
+    - 400 Bad Request: Invalid data in POST request
+    """
+    serializer = PaiementSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()  # This will create the payment and trigger the auto-creation of the commission
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+""" -------------------------------------                Comissions          ---------------------------------------"""
 
 
 class ComissionListView(generics.ListAPIView):
@@ -698,53 +820,101 @@ class ComissionListView(generics.ListAPIView):
         })
 
 """ -------------------------------------                Event          ---------------------------------------"""
+from rest_framework import generics, filters, status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
+from .models import Event
+from .serializers import EventSerializer
+from django.utils import timezone
 
-@api_view(['GET', 'POST'])
-def list_create_event(request):
-    if request.method == 'GET':
-        events = Event.objects.all()
-        groupe_id = request.query_params.get('groupe_id')
-        professeur_id = request.query_params.get('professeur_id')
+class EventListView(generics.ListAPIView):
+    queryset = Event.objects.all()
+    serializer_class = EventSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['id', 'title', 'event_type', 'start_date', 'end_date']
+    ordering_fields = ['id', 'title', 'start_date', 'end_date', 'created_at']
 
-        if groupe_id:
-            events = events.filter(groupe_id=groupe_id)
-        if professeur_id:
-            events = events.filter(professeur_id=professeur_id)
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
 
-        serializer = EventSerializer(events, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    elif request.method == 'POST':
-        serializer = EventSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Date range filtering for created_at
+        start_date = self.request.query_params.get('created_start_date')
+        end_date = self.request.query_params.get('created_end_date')
+        if start_date and end_date:
+            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(created_at__date__range=[start_date, end_date])
 
-@api_view(['GET', 'PUT', 'DELETE'])
-def update_delete_event(request):
-    pk = request.query_params.get('pk')
-    if not pk:
-        return Response({"error": "Event ID (pk) is required"}, status=status.HTTP_400_BAD_REQUEST)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
 
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+@api_view(['POST'])
+def create_event(request):
+    """
+    Create a new event.
+
+    POST:
+    - Creates a new event.
+
+    Returns:
+    - 201 Created: Successful POST request
+    - 400 Bad Request: Invalid data in POST request
+    """
+    serializer = EventSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PUT'])
+def update_event(request, pk):
+    """
+    Update an existing event.
+
+    PUT:
+    - Updates an existing event identified by the pk (primary key).
+
+    Returns:
+    - 200 OK: Successful update
+    - 400 Bad Request: Invalid data in PUT request
+    - 404 Not Found: Event with given ID not found
+    """
     try:
         event = Event.objects.get(pk=pk)
     except Event.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'GET':
-        serializer = EventSerializer(event)
+    serializer = EventSerializer(event, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
         return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    elif request.method == 'PUT':
-        serializer = EventSerializer(event, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+@api_view(['DELETE'])
+def delete_event(request, pk):
+    """
+    Delete an existing event.
 
-    elif request.method == 'DELETE':
-        event.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    DELETE:
+    - Deletes an existing event identified by the pk (primary key).
+
+    Returns:
+    - 204 No Content: Successful deletion
+    - 404 Not Found: Event with given ID not found
+    """
+    try:
+        event = Event.objects.get(pk=pk)
+    except Event.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    event.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 

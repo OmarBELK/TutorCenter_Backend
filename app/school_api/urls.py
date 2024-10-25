@@ -1,42 +1,63 @@
 from django.urls import path
 from . import views
-from .views import ComissionListView, PaiementListView
+from .views import *
 
 
 
 urlpatterns = [
 
-    path('list_create_etudiant/', views.list_create_etudiant),
-    path('update_delete_etudiant/', views.update_delete_etudiant),
+    # Etudiant paths
+    path('etudiant_list/', EtudiantListView.as_view(), name='etudiant-list'),
+    path('etudiants/create/', views.create_etudiant, name='create-etudiant'),
+    path('etudiants/update/<int:pk>/', views.update_etudiant, name='update-etudiant'),
+    path('etudiants/delete/<int:pk>/', views.delete_etudiant, name='delete-etudiant'),
 
-    path('list_create_professeur/', views.list_create_professeur),
-    path('update_delete_professeur/', views.update_delete_professeur),
+    # Professeur paths
+    path('professeur_list/', ProfesseurListView.as_view(), name='professeur-list'),
+    path('professeurs/create/', views.create_professeur, name='create-professeur'),
+    path('professeurs/update/<int:pk>/', views.update_professeur, name='update-professeur'),
+    path('professeurs/delete/<int:pk>/', views.delete_professeur, name='delete-professeur'),
 
-    path('list_create_niveau/', views.list_create_niveau),
-    path('update_delete_niveau/', views.update_delete_niveau),
+    # Niveau paths
+    path('niveau_list/', NiveauListView.as_view(), name='niveau-list'),
+    path('niveaux/create/', views.create_niveau, name='create-niveau'),
+    path('niveaux/update/<int:pk>/', views.update_niveau, name='update-niveau'),
+    path('niveaux/delete/<int:pk>/', views.delete_niveau, name='delete-niveau'),
 
-    path('list_create_filiere/', views.list_create_filiere),
-    path('update_delete_filiere/', views.update_delete_filiere),
+    # Filiere paths
+    path('filiere_list/', FiliereListView.as_view(), name='filiere-list'),
+    path('filieres/create/', views.create_filiere, name='create-filiere'),
+    path('filieres/update/<int:pk>/', views.update_filiere, name='update-filiere'),
+    path('filieres/delete/<int:pk>/', views.delete_filiere, name='delete-filiere'),
 
-    path('list_create_matiere/', views.list_create_matiere),
-    path('update_delete_matiere/', views.update_delete_matiere),
+    # Matiere paths
+    path('matiere_list/', MatiereListView.as_view(), name='matiere-list'),
+    path('matieres/create/', views.create_matiere, name='create-matiere'),
+    path('matieres/update/<int:pk>/', views.update_matiere, name='update-matiere'),
+    path('matieres/delete/<int:pk>/', views.delete_matiere, name='delete-matiere'),
 
-    path('list_create_groupe/', views.list_create_groupe),
-    path('update_delete_groupe/', views.update_delete_groupe),
+    # Groupe paths
+    path('groupe_list/', GroupeListView.as_view(), name='groupe-list'),
+    path('groupes/create/', views.create_groupe, name='create-groupe'),
+    path('groupes/update/<int:pk>/', views.update_groupe, name='update-groupe'),
+    path('groupes/delete/<int:pk>/', views.delete_groupe, name='delete-groupe'),
 
 
     path('assign_etudiant_group/', views.assign_etudiant_group),
     path('unassign_etudiant_from_groupe/', views.unassign_etudiant_from_groupe),
     path('list_groupes_with_etudiants/', views.list_groupes_with_etudiants),
     
-    path('list_create_paiement/', views.list_create_paiement),
-    path('list_comissions/', views.list_comissions),
+    path('groupes-with-etudiants/', GroupeWithEtudiantsListView.as_view(), name='groupes-with-etudiants'),
 
 
-    path('list_create_event/', views.list_create_event),
-    path('update_delete_event/', views.update_delete_event),
+    path('paiements/', PaiementListView.as_view(), name='paiement-list'),
+    path('paiements/create/', views.create_paiement, name='create-paiement'),
 
     path('commissions/', ComissionListView.as_view(), name='commission-list'),
-    path('paiements/', PaiementListView.as_view(), name='paiement-list'),
+
+    path('events/', EventListView.as_view(), name='event-list'),
+    path('events/create/', views.create_event, name='create-event'),
+    path('events/update/<int:pk>/', views.update_event, name='update-event'),
+    path('events/delete/<int:pk>/', views.delete_event, name='delete-event'),
 
 ]
