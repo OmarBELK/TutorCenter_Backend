@@ -706,7 +706,7 @@ class GroupeWithEtudiantsListView(generics.ListAPIView):
 
         # Aggregation
         total_groups = queryset.count()
-        total_students = queryset.aggregate(total_students=Count('etudiants'))['total_students']
+        total_students = EtudiantGroupe.objects.filter(groupe__in=queryset).count()
 
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -915,6 +915,7 @@ def delete_event(request, pk):
 
     event.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 
 
