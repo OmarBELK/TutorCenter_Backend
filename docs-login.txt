@@ -1,0 +1,174 @@
+
+Here's a user story for staff authentication and profile management, with the corresponding API endpoints and test steps in Postman:
+
+
+**Story**: As a staff member, I want to log in to access the system.
+
+**Endpoint**:
+POST http://localhost:8000/api/token/
+
+**Request Body**:
+{
+    "username": "admin",
+    "password": "your_password"
+}
+
+**Expected Response**:
+{
+    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+    "access": "eyJ0eXAiOiJKV1QiLCJhbGc..."
+}
+
+**Testing Steps**:
+1. Open Postman
+2. Create POST request to /api/token/
+3. Add username and password in the body
+4. Send request
+5. Save both tokens for future requests
+
+
+
+### 2. Create Staff Profile (Admin Only)
+**Story**: As an admin, I want to create new staff accounts.
+**Endpoint**:
+POST http://localhost:8000/api/staff/register/
+
+**Headers**:
+Authorization: Bearer your_access_token
+
+**Request Body**:
+
+{
+    "username": "newstaff",
+    "password": "staffpassword",
+    "password2": "staffpassword",
+    "email": "staff@example.com",
+    "first_name": "John",
+    "last_name": "Doe"
+}
+
+**Expected Response**:
+{
+    "username": "newstaff",
+    "email": "staff@example.com",
+    "first_name": "John",
+    "last_name": "Doe"
+}
+
+**Testing Steps**:
+1. Use admin access token in Authorization header
+2. Create POST request to /api/staff/register/
+3. Add staff details in request body
+4. Send request
+5. Verify new staff account is created
+
+
+
+### 3. View Staff Profile
+
+**Story**: As a staff member, I want to view my profile information.
+
+**Endpoint**:
+GET http://localhost:8000/api/staff/profile/
+
+**Headers**:
+Authorization: Bearer your_access_token
+
+**Expected Response**:
+
+{
+    "id": 1,
+    "username": "staffuser",
+    "email": "staff@example.com",
+    "first_name": "John",
+    "last_name": "Doe"
+}
+
+
+**Testing Steps**:
+1. Use staff access token in Authorization header
+2. Create GET request to /api/staff/profile/
+3. Send request
+4. Verify profile information is returned
+
+
+### 4. Update Staff Profile
+
+**Story**: As a staff member, I want to update my profile information.
+
+**Endpoint**:
+PUT http://localhost:8000/api/staff/profile/
+
+
+**Headers**:
+Authorization: Bearer your_access_token
+
+**Request Body**:
+{
+    "first_name": "John Updated",
+    "last_name": "Doe Updated",
+    "email": "updated@example.com"
+}
+
+
+**Expected Response**:
+{
+    "id": 1,
+    "username": "staffuser",
+    "email": "updated@example.com",
+    "first_name": "John Updated",
+    "last_name": "Doe Updated"
+}
+
+**Testing Steps**:
+1. Use staff access token in Authorization header
+2. Create PUT request to /api/staff/profile/
+3. Add updated information in request body
+4. Send request
+5. Verify profile information is updated
+
+
+
+### 5. Change Password
+
+**Story**: As a staff member, I want to change my password.
+
+**Endpoint**:
+POST http://localhost:8000/api/staff/change-password/
+
+**Headers**:
+Authorization: Bearer your_access_token
+
+**Request Body**:
+{
+    "old_password": "oldpassword",
+    "new_password": "newpassword"
+}
+
+**Expected Response**:
+{
+    "message": "Password Updated successfully"
+}
+
+**Testing Steps**:
+1. Use staff access token in Authorization header
+2. Create POST request to /api/staff/change-password/
+3. Add old and new passwords in request body
+3. Send request
+4. Verify password is updated by trying to login with new password
+
+
+Testing Flow:
+1. Login as admin
+2. Create new staff account
+3. Login as new staff
+4. View staff profile
+5. Update staff profile
+6. Change password
+7. Login again with new password
+
+Remember to:
+1. Save tokens after login
+2. Use correct access tokens in Authorization headers
+3. Handle errors appropriately
+4. Verify responses match expected formats

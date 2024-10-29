@@ -1,3 +1,4 @@
+from os import write
 from rest_framework import serializers
 from .models import Etudiant, Professeur, Comission, Paiement
 from .models import Niveau, Filiere, Matiere, Groupe, EtudiantGroupe
@@ -225,11 +226,62 @@ class ComissionSerializer(serializers.ModelSerializer):
 
 
 
-
-
-
-
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = ['id', 'title', 'start_time', 'end_time', 'description', 'groupe', 'professeur']    
+
+
+"""---------------------------------------  Serializer for USERS  ------------------------------------"""
+
+from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+
+class StaffRegisterSerializer(serializers.ModelSerializer):
+    password  = serializers.CharField(write_only=True)
+    password2 = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'password', 'password2', 'email', 'first_name', 'last_name']
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError({"password": "Password fields didn't match."})
+        
+        return attrs
+    
+    def create(self, validated_data):
+        validated_data.pop('password2')
+        user = User.objects.create_user(**validated_data)
+        user.is_staff = True
+        user.save()
+        return user
+    
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+
+
+from rest_framework import serializers
+from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, validators=[validate_password])
+
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect")
+        return value
+
+    def validate_new_password(self, value):
+        # You can add custom password validation here if needed
+        if len(value) < 8:
+            raise serializers.ValidationError("Password must be at least 8 characters long")
+        if value.isdigit():
+            raise serializers.ValidationError("Password cannot be entirely numeric")
+        return value

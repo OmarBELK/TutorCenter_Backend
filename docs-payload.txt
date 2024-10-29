@@ -133,10 +133,6 @@ Then you can create a new Etudiant (Student) and assign him to the Groupe (Group
 
 
 
-
-
-
-
 1. Setting the Stage:
 Our school management system begins with the foundation of education. We start by creating the building blocks:
 A new Niveau (Level): This could be "Freshman", "Sophomore", etc.
@@ -181,3 +177,38 @@ Creating new groups as needed
 Updating student and teacher information
 Managing payments and commissions
 Scheduling events and classes
+
+
+
+Create a new staff user (admin only):
+POST /api/staff/register/
+{
+    "username": "newstaff",
+    "password": "yourpassword",
+    "password2": "yourpassword",
+    "email": "staff@example.com",
+    "first_name": "Staff",
+    "last_name": "User"
+}
+
+2. Get a new access token:
+POST /api/token/
+{
+    "username": "newstaff",
+    "password": "yourpassword"
+}
+
+
+3. Update profile (authenticated users):
+PUT /api/staff/profile/
+{
+    "first_name": "Updated",
+    "last_name": "Name",
+    "email": "newemail@example.com"
+}
+
+4. Refresh token:
+POST /api/token/refresh/
+{
+    "refresh": "your-refresh-token"
+}

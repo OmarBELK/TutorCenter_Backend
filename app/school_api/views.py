@@ -1,3 +1,4 @@
+from ast import mod
 from django.shortcuts import render
 # from rest_framework
 from rest_framework import status
@@ -832,19 +833,24 @@ class EventListView(generics.ListAPIView):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['id', 'title', 'event_type', 'start_date', 'end_date']
-    ordering_fields = ['id', 'title', 'start_date', 'end_date', 'created_at']
+    # Only include fields that exist in your Event model
+    filterset_fields = ['id', 'title', 'groupe', 'professeur']
+    ordering_fields = ['id', 'start_time', 'end_time']
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
 
-        # Date range filtering for created_at
-        start_date = self.request.query_params.get('created_start_date')
-        end_date = self.request.query_params.get('created_end_date')
-        if start_date and end_date:
-            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
-            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
-            queryset = queryset.filter(created_at__date__range=[start_date, end_date])
+        # Date range filtering for event dates
+        start_time = self.request.query_params.get('start_time')
+        end_time = self.request.query_params.get('end_time')
+        
+        if start_time and end_time:
+            try:
+                start_datetime = timezone.datetime.strptime(start_time, '%Y-%m-%d')
+                end_datetime = timezone.datetime.strptime(end_time, '%Y-%m-%d')
+                queryset = queryset.filter(start_time__range=[start_datetime, end_datetime])
+            except ValueError:
+                pass  # Handle invalid date format
 
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -924,8 +930,151 @@ def delete_event(request, pk):
 
 
 
+""" -------------------------------------                Users          ---------------------------------------"""
+
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework_simplejwt.views import TokenObtainPairView
+from django.contrib.auth.models import User
+from .serializers import StaffRegisterSerializer, UserSerializer
+
+class StaffRegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = [IsAdminUser]
+    serializer_class = StaffRegisterSerializer
+
+class StaffProfileView(generics.RetrieveUpdateAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+    
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from .serializers import ChangePasswordSerializer
+from django.contrib.auth.models import User
+
+class StaffChangePasswordView(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ChangePasswordSerializer
+
+    def get_object(self):
+        return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        user = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+
+        if serializer.is_valid():
+            # Set the new password
+            user.set_password(serializer.validated_data['new_password'])
+            user.save()
+
+            # Optional: Invalidate all existing tokens
+            # If you want to force re-login after password change
+
+            return Response({
+                "message": "Password updated successfully",
+                "status": "success"
+            }, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+""" -------------------------------------                Dashboard Metrics          ---------------------------------------"""
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.db.models import Count, Sum, Avg
+from django.utils import timezone
+from datetime import datetime, timedelta
+
+from .models import *
+
+@api_view(['GET'])
+#@permission_classes([IsAuthenticated])
+def dashboard_metrics(request):
+    now = timezone.now()
+    last_month = now.date() - timedelta(days=30)
+
+    try:
+        # Student Metrics
+        student_metrics = {
+            'total_students': Etudiant.objects.count(),
+            'total_male_students': Etudiant.objects.filter(sexe='M').count(),
+            'total_female_students': Etudiant.objects.filter(sexe='F').count(),
+            'students_by_nationality': Etudiant.objects.values('nationalite')\
+                .annotate(count=Count('id')),
+            'new_students_this_month': Etudiant.objects.filter(
+                created_at__gte=last_month
+            ).count(),
+        }
+
+        # Teacher Metrics
+        teacher_metrics = {
+            'total_teachers': Professeur.objects.count(),
+            'teachers_by_gender': {
+                'male': Professeur.objects.filter(sexe='M').count(),
+                'female': Professeur.objects.filter(sexe='F').count()
+            },
+            'teachers_by_nationality': Professeur.objects.values('nationalite')\
+                .annotate(count=Count('id')),
+            'teachers_by_specialite': Professeur.objects.values('specialite')\
+                .annotate(count=Count('id')),
+        }
+
+        # Group Metrics
+        group_metrics = {
+            'total_groups': Groupe.objects.count(),
+            'students_per_group': EtudiantGroupe.objects.values('groupe')\
+                .annotate(count=Count('etudiant')),
+        }
+
+        # Payment Metrics
+        payment_metrics = {
+            'total_payments': Paiement.objects.count(),
+            'total_amount': Paiement.objects.aggregate(total=Sum('montant'))['total'] or 0,
+            'payments_this_month': {
+                'count': Paiement.objects.filter(date_paiement__gte=last_month).count(),
+                'amount': Paiement.objects.filter(date_paiement__gte=last_month)\
+                    .aggregate(total=Sum('montant'))['total'] or 0
+            },
+            'payment_status': Paiement.objects.values('statut_paiement')\
+                .annotate(count=Count('id'))
+        }
+
+        # Commission Metrics
+        commission_metrics = {
+            'total_commissions': Comission.objects.count(),
+            'total_commission_amount': Comission.objects.aggregate(
+                total=Sum('montant'))['total'] or 0,
+            'commissions_this_month': {
+                'count': Comission.objects.filter(date_comission__gte=last_month).count(),
+                'amount': Comission.objects.filter(date_comission__gte=last_month)\
+                    .aggregate(total=Sum('montant'))['total'] or 0
+            },
+            'commission_status': Comission.objects.values('statut_comission')\
+                .annotate(count=Count('id'))
+        }
 
 
 
+        dashboard_data = {
+            'student_metrics': student_metrics,
+            'teacher_metrics': teacher_metrics,
+            'group_metrics': group_metrics,
+            'payment_metrics': payment_metrics,
+            'commission_metrics': commission_metrics,
+            'last_updated': now.isoformat()
+        }
 
+        return Response(dashboard_data)
 
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=500)

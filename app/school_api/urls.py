@@ -1,6 +1,11 @@
 from django.urls import path
 from . import views
 from .views import *
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    TokenVerifyView,
+)
 
 
 
@@ -60,4 +65,24 @@ urlpatterns = [
     path('events/update/<int:pk>/', views.update_event, name='update-event'),
     path('events/delete/<int:pk>/', views.delete_event, name='delete-event'),
 
+
+    # JWT Authentication
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+
+    # Staff Management
+    path('staff/register/', views.StaffRegisterView.as_view(), name='staff-register'),
+    path('staff/profile/', views.StaffProfileView.as_view(), name='staff-profile'),
+    path('staff/change-password/', views.StaffChangePasswordView.as_view(), name='staff-change-password'),
+
+
+    # Dashboard Metrics
+    path('dashboard/metrics/', dashboard_metrics, name='dashboard-metrics'),
 ]
+
+
+
+
+
+
