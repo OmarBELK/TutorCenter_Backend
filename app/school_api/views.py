@@ -117,6 +117,7 @@ def delete_etudiant(request, pk):
 
     etudiant.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
 """ -------------------------------------     Professeur    -----------------------------------"""
 
 class ProfesseurListView(generics.ListAPIView):
@@ -144,6 +145,7 @@ class ProfesseurListView(generics.ListAPIView):
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
 
 @api_view(['POST'])
 def create_professeur(request):
@@ -211,6 +213,7 @@ def delete_professeur(request, pk):
 
     professeur.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
 """ -------------------------------------     Niveau    ---------------------------------------"""
 
 from rest_framework import generics, filters, status
@@ -401,6 +404,7 @@ def delete_filiere(request, pk):
 
     filiere.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
 """ -------------------------------------     Matiere    ---------------------------------------"""
 
 
@@ -497,63 +501,51 @@ def delete_matiere(request, pk):
 
 """ -------------------------------------     Groupe    ---------------------------------------"""
 
-class GroupeListView(generics.ListAPIView):
+class GroupeListView(generics.ListCreateAPIView):
     queryset = Groupe.objects.all()
     serializer_class = GroupeDetailSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['id', 'nom_groupe', 'niveau', 'filiere']
-    ordering_fields = ['id', 'nom_groupe', 'created_at']
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-
-        # Date range filtering for created_at
-        start_date = self.request.query_params.get('start_date')
-        end_date = self.request.query_params.get('end_date')
-        if start_date and end_date:
-            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
-            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
-            queryset = queryset.filter(created_at__date__range=[start_date, end_date])
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+    filterset_fields = ['niveau', 'filiere']
+    ordering_fields = ['created_at']
 
 @api_view(['POST'])
 def create_groupe(request):
-    """
-    Create a new groupe.
-
-    POST:
-    - Creates a new groupe.
-
-    Returns:
-    - 201 Created: Successful POST request
-    - 400 Bad Request: Invalid data in POST request
-    """
     if request.method == 'POST':
+        # Ensure filiere_id is provided
+        if 'filiere' not in request.data:
+            return Response(
+                {'error': 'filiere field is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
         serializer = GroupeSerializer(data=request.data)
         if serializer.is_valid():
             groupe = serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+            # Handle professeurs assignments
+            professeurs_data = request.data.get('professeurs', [])
+            for prof_data in professeurs_data:
+                GroupeProfesseur.objects.create(
+                    groupe=groupe,
+                    professeur_id=prof_data['id'],
+                    commission_fixe=prof_data.get('commission_fixe', 100.0)
+                )
+            
+            # Handle matieres assignments
+            matieres_data = request.data.get('matieres', [])
+            for matiere_data in matieres_data:
+                GroupeMatiere.objects.create(
+                    groupe=groupe,
+                    matiere_id=matiere_data['id']
+                )
+            
+            return Response(GroupeSerializer(groupe).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['PUT'])
 def update_groupe(request, pk):
     """
-    Update an existing groupe.
-
-    PUT:
-    - Updates an existing groupe identified by the pk (primary key).
-
-    Returns:
-    - 200 OK: Successful update
-    - 400 Bad Request: Invalid data in PUT request
-    - 404 Not Found: Groupe with given ID not found
+    Update an existing groupe and its relationships.
     """
     try:
         groupe = Groupe.objects.get(pk=pk)
@@ -562,29 +554,51 @@ def update_groupe(request, pk):
 
     serializer = GroupeSerializer(groupe, data=request.data)
     if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
+        groupe = serializer.save()
+        
+        # Update professeurs assignments
+        if 'professeurs' in request.data:
+            # Clear existing relationships
+            GroupeProfesseur.objects.filter(groupe=groupe).delete()
+            # Create new relationships
+            for prof_data in request.data['professeurs']:
+                GroupeProfesseur.objects.create(
+                    groupe=groupe,
+                    professeur_id=prof_data['id'],
+                    commission_fixe=prof_data.get('commission_fixe', 100.0)
+                )
+        
+        # Update matieres assignments
+        if 'matieres' in request.data:
+            # Clear existing relationships
+            GroupeMatiere.objects.filter(groupe=groupe).delete()
+            # Create new relationships
+            for matiere_data in request.data['matieres']:
+                GroupeMatiere.objects.create(
+                    groupe=groupe,
+                    matiere_id=matiere_data['id']
+                )
+        
+        return Response(GroupeSerializer(groupe).data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['DELETE'])
 def delete_groupe(request, pk):
     """
-    Delete an existing groupe.
-
-    DELETE:
-    - Deletes an existing groupe identified by the pk (primary key).
-
-    Returns:
-    - 204 No Content: Successful deletion
-    - 404 Not Found: Groupe with given ID not found
+    Delete an existing groupe and its relationships.
     """
     try:
         groupe = Groupe.objects.get(pk=pk)
+        
+        # Delete related records first
+        GroupeProfesseur.objects.filter(groupe=groupe).delete()
+        GroupeMatiere.objects.filter(groupe=groupe).delete()
+        EtudiantGroupe.objects.filter(groupe=groupe).delete()
+        
+        groupe.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
     except Groupe.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
-
-    groupe.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
     
 """ -------------------------------------     Etudiant - Groupe    ---------------------------------------"""
 from rest_framework.exceptions import ValidationError
@@ -637,34 +651,8 @@ def unassign_etudiant_from_groupe(request):
     except EtudiantGroupe.DoesNotExist:
         return Response({"error": "Assignment not found."}, status=status.HTTP_404_NOT_FOUND)
 
+
 """ -------------------------------------     View to List All Groups with Their Students   ---------------------------------------"""
-
-@api_view(['GET'])
-def list_groupes_with_etudiants(request):
-    """
-    List all students or students of a specific group.
-
-    GET:
-    - If 'groupe_id' is provided in query params, returns students of that specific group.
-    - Otherwise, returns a list of all groups with their students.
-
-    Returns:
-    - 200 OK: Successful GET request
-    - 404 Not Found: Group with given ID not found
-    """
-    if 'groupe_id' in request.query_params:
-        groupe_id = request.query_params['groupe_id']
-        try:
-            groupe = Groupe.objects.get(pk=groupe_id)
-            serializer = GroupeWithEtudiantsSerializer(groupe)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Groupe.DoesNotExist:
-            return Response({"error": "Group not found"}, status=status.HTTP_404_NOT_FOUND)
-    else:
-        groupes = Groupe.objects.all()
-        serializer = GroupeWithEtudiantsSerializer(groupes, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
 
 
 class GroupeWithEtudiantsListView(generics.ListAPIView):
@@ -677,12 +665,12 @@ class GroupeWithEtudiantsListView(generics.ListAPIView):
     def get_queryset(self):
         queryset = super().get_queryset()
         
-        # Check if a specific groupe_id is requested
+        # Existing filters
         groupe_id = self.request.query_params.get('groupe_id')
         if groupe_id:
             queryset = queryset.filter(id=groupe_id)
 
-        # Date range filtering for created_at
+        # Date range filtering
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
         if start_date and end_date:
@@ -690,13 +678,21 @@ class GroupeWithEtudiantsListView(generics.ListAPIView):
             end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
             queryset = queryset.filter(created_at__date__range=[start_date, end_date])
 
+        # New filters for professors and subjects
+        professeur_id = self.request.query_params.get('professeur_id')
+        matiere_id = self.request.query_params.get('matiere_id')
+        
+        if professeur_id:
+            queryset = queryset.filter(groupeprofesseur__professeur_id=professeur_id)
+        if matiere_id:
+            queryset = queryset.filter(groupematiere__matiere_id=matiere_id)
+
         return queryset
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-
-        # Check if a specific groupe_id is requested
         groupe_id = self.request.query_params.get('groupe_id')
+
         if groupe_id:
             try:
                 groupe = queryset.get(id=groupe_id)
@@ -705,9 +701,11 @@ class GroupeWithEtudiantsListView(generics.ListAPIView):
             except Groupe.DoesNotExist:
                 return Response({"error": "Group not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Aggregation
+        # Enhanced aggregations
         total_groups = queryset.count()
         total_students = EtudiantGroupe.objects.filter(groupe__in=queryset).count()
+        total_professors = GroupeProfesseur.objects.filter(groupe__in=queryset).count()
+        total_subjects = GroupeMatiere.objects.filter(groupe__in=queryset).count()
 
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -715,14 +713,18 @@ class GroupeWithEtudiantsListView(generics.ListAPIView):
             return self.get_paginated_response({
                 'results': serializer.data,
                 'total_groups': total_groups,
-                'total_students': total_students
+                'total_students': total_students,
+                'total_professors': total_professors,
+                'total_subjects': total_subjects
             })
 
         serializer = self.get_serializer(queryset, many=True)
         return Response({
             'results': serializer.data,
             'total_groups': total_groups,
-            'total_students': total_students
+            'total_students': total_students,
+            'total_professors': total_professors,
+            'total_subjects': total_subjects
         })
 """ -------------------------------------                Paiement          ---------------------------------------"""
 
@@ -765,22 +767,17 @@ class PaiementListView(generics.ListAPIView):
 
 @api_view(['POST'])
 def create_paiement(request):
-    """
-    Create a new paiement.
-    
-    POST:
-    - Creates a new paiement, and automatically generates a commission for the professor
-      associated with the specified group.
-    
-    Returns:
-    - 201 Created: Successful POST request
-    - 400 Bad Request: Invalid data in POST request
-    """
     serializer = PaiementSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()  # This will create the payment and trigger the auto-creation of the commission
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    if serializer.is_valid():   
+        try:
+            paiement = serializer.save()
+            return Response(PaiementSerializer(paiement).data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 """ -------------------------------------                Comissions          ---------------------------------------"""
 
 
@@ -788,7 +785,7 @@ class ComissionListView(generics.ListAPIView):
     queryset = Comission.objects.all()
     serializer_class = ComissionSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['professeur', 'etudiant', 'groupe']
+    filterset_fields = ['professeur', 'etudiant', 'groupe', 'statut_comission']
     ordering_fields = ['date_comission', 'montant']
 
     def list(self, request, *args, **kwargs):
@@ -829,36 +826,28 @@ from .models import Event
 from .serializers import EventSerializer
 from django.utils import timezone
 
-class EventListView(generics.ListAPIView):
+class EventListView(generics.ListCreateAPIView):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    # Only include fields that exist in your Event model
-    filterset_fields = ['id', 'title', 'groupe', 'professeur']
-    ordering_fields = ['id', 'start_time', 'end_time']
+    filterset_fields = ['groupe', 'professeur']
+    ordering_fields = ['start_time', 'end_time']
 
-    def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-
-        # Date range filtering for event dates
-        start_time = self.request.query_params.get('start_time')
-        end_time = self.request.query_params.get('end_time')
+    def create(self, request, *args, **kwargs):
+        # Validate that the professor is associated with the group
+        groupe_id = request.data.get('groupe')
+        professeur_id = request.data.get('professeur')
         
-        if start_time and end_time:
-            try:
-                start_datetime = timezone.datetime.strptime(start_time, '%Y-%m-%d')
-                end_datetime = timezone.datetime.strptime(end_time, '%Y-%m-%d')
-                queryset = queryset.filter(start_time__range=[start_datetime, end_datetime])
-            except ValueError:
-                pass  # Handle invalid date format
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+        if not GroupeProfesseur.objects.filter(
+            groupe_id=groupe_id, 
+            professeur_id=professeur_id
+        ).exists():
+            return Response(
+                {'error': 'Professor is not associated with this group'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        return super().create(request, *args, **kwargs)
 
 @api_view(['POST'])
 def create_event(request):

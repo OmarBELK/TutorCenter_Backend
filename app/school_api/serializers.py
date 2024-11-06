@@ -1,17 +1,6 @@
 from os import write
 from rest_framework import serializers
-from .models import Etudiant, Professeur, Comission, Paiement
-from .models import Niveau, Filiere, Matiere, Groupe, EtudiantGroupe
-from rest_framework import serializers
-from .models import Paiement, Comission, Groupe, Event
-
-
-
-
-# class EtudiantSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Etudiant
-#         fields = '__all__'
+from .models import *
 
 
 class EtudiantSerializer(serializers.ModelSerializer):
@@ -30,7 +19,6 @@ class EtudiantSerializer(serializers.ModelSerializer):
             EtudiantGroupe.objects.create(etudiant=etudiant, groupe=groupe)
         return etudiant 
 
-
 class EtudiantDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Etudiant
@@ -44,10 +32,18 @@ class EtudiantDetailSerializer(serializers.ModelSerializer):
         return [{
             'id': eg.groupe.id,
             'nom_groupe': eg.groupe.nom_groupe,
-            'matiere': eg.groupe.matiere.nom_matiere,
-            'filiere':eg.groupe.filiere.nom_filiere,
+            'matieres': [{
+                'id': gm.matiere.id,
+                'nom_matiere': gm.matiere.nom_matiere
+            } for gm in GroupeMatiere.objects.filter(groupe=eg.groupe)],
+            'filiere': eg.groupe.filiere.nom_filiere,
             'niveau': eg.groupe.niveau.nom_niveau,
-            'professeur': f"{eg.groupe.professeur.nom} {eg.groupe.professeur.prenom}"
+            'professeurs': [{
+                'id': gp.professeur.id,
+                'nom': gp.professeur.nom,
+                'prenom': gp.professeur.prenom,
+                'commission_fixe': gp.commission_fixe
+            } for gp in GroupeProfesseur.objects.filter(groupe=eg.groupe)]
         } for eg in etudiant_groupes]
     
     def get_paiements(self, obj):
@@ -62,7 +58,6 @@ class EtudiantDetailSerializer(serializers.ModelSerializer):
         } for p in paiements]
 
 
-
 class ProfesseurSerializer(serializers.ModelSerializer):
     class Meta:
         model = Professeur
@@ -72,22 +67,26 @@ class ProfesseurSerializer(serializers.ModelSerializer):
 class ProfesseurDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Professeur
-        fields = ['id', 'nom', 'prenom', 'telephone', 'adresse', 'date_naissance', 'sexe', 'nationalite', 'specialite', 'groupes', 'commissions', 'created_at']
+        fields = ['id', 'nom', 'prenom', 'telephone', 'adresse', 'date_naissance', 
+                 'sexe', 'nationalite', 'specialite', 'groupes', 'commissions', 'created_at']
 
-    groupes    = serializers.SerializerMethodField()
+    groupes = serializers.SerializerMethodField()
     commissions = serializers.SerializerMethodField()
 
     def get_groupes(self, obj):
-        groupes = Groupe.objects.filter(professeur=obj)
+        groupe_professeurs = GroupeProfesseur.objects.filter(professeur=obj)
         return [{
-            'id': g.id,
-            'nom_groupe': g.nom_groupe,
-            'matiere': g.matiere.nom_matiere,
-            'filiere': g.filiere.nom_filiere,
-            'niveau': g.niveau.nom_niveau,
-            'max_etudiants': g.max_etudiants,
-            'commission_fixe': g.commission_fixe,
-        } for g in groupes]
+            'id': gp.groupe.id,
+            'nom_groupe': gp.groupe.nom_groupe,
+            'commission_fixe': gp.commission_fixe,
+            'filiere': gp.groupe.filiere.nom_filiere,
+            'niveau': gp.groupe.niveau.nom_niveau,
+            'max_etudiants': gp.groupe.max_etudiants,
+            'matieres': [{
+                'id': gm.matiere.id,
+                'nom_matiere': gm.matiere.nom_matiere
+            } for gm in GroupeMatiere.objects.filter(groupe=gp.groupe)]
+        } for gp in groupe_professeurs]
 
     def get_commissions(self, obj):
         commissions = Comission.objects.filter(professeur=obj)
@@ -97,7 +96,10 @@ class ProfesseurDetailSerializer(serializers.ModelSerializer):
             'date_comission': c.date_comission,
             'statut_comission': c.statut_comission,
             'etudiant': f"{c.etudiant.nom} {c.etudiant.prenom}",
-            'groupe': c.groupe.id,
+            'groupe': {
+                'id': c.groupe.id,
+                'nom_groupe': c.groupe.nom_groupe
+            }
         } for c in commissions]
         
 
@@ -124,40 +126,108 @@ class EtudiantGroupeSerializer(serializers.ModelSerializer):
         fields = '__all__'
         
 
+""" -------- These are two new serializers for the many to many relationship between groupe and professeur and groupe and matiere --------"""
+
+class GroupeProfesseurSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GroupeProfesseur
+        fields = ['id', 'groupe', 'professeur', 'commission_fixe', 'created_at']
+
+class GroupeMatiereSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GroupeMatiere
+        fields = ['id', 'groupe', 'matiere', 'created_at']
+
+
+
+
+
 class GroupeSerializer(serializers.ModelSerializer):
+    professeurs = serializers.SerializerMethodField()
+    matieres = serializers.SerializerMethodField()
+
     class Meta:
         model = Groupe
-        fields = ['id', 'nom_groupe', 'professeur', 'niveau', 'max_etudiants', 'filiere', 'matiere', 'commission_fixe']
+        fields = ['id', 'nom_groupe', 'niveau', 'max_etudiants', 
+                 'filiere', 'professeurs', 'matieres', 'created_at']
+
+    def get_professeurs(self, obj):
+        groupe_professeurs = GroupeProfesseur.objects.filter(groupe=obj)
+        return [{
+            'id': gp.professeur.id,
+            'nom': gp.professeur.nom,
+            'prenom': gp.professeur.prenom,
+            'commission_fixe': gp.commission_fixe
+        } for gp in groupe_professeurs]
+
+    def get_matieres(self, obj):
+        groupe_matieres = GroupeMatiere.objects.filter(groupe=obj)
+        return [{
+            'id': gm.matiere.id,
+            'nom_matiere': gm.matiere.nom_matiere
+        } for gm in groupe_matieres]
+
 
 class GroupeDetailSerializer(serializers.ModelSerializer):
-
-    professeur = ProfesseurSerializer(read_only=True)
-    niveau     = NiveauSerializer(read_only=True)
-    filiere    = FiliereSerializer(read_only=True)
-    matiere    = MatiereSerializer(read_only=True)
+    professeurs = serializers.SerializerMethodField()
+    matieres = serializers.SerializerMethodField()
+    niveau = NiveauSerializer(read_only=True)
+    filiere = FiliereSerializer(read_only=True)
 
     class Meta:
         model = Groupe
-        fields = ['id','nom_groupe', 'professeur', 'commission_fixe','niveau', 'max_etudiants', 'filiere', 'matiere']
+        fields = ['id', 'nom_groupe', 'niveau', 'max_etudiants', 
+                 'filiere', 'professeurs', 'matieres', 'created_at']
+
+    def get_professeurs(self, obj):
+        groupe_professeurs = GroupeProfesseur.objects.filter(groupe=obj)
+        return [{
+            'id': gp.professeur.id,
+            'nom': gp.professeur.nom,
+            'prenom': gp.professeur.prenom,
+            'commission_fixe': gp.commission_fixe
+        } for gp in groupe_professeurs]
+
+    def get_matieres(self, obj):
+        groupe_matieres = GroupeMatiere.objects.filter(groupe=obj)
+        return [{
+            'id': gm.matiere.id,
+            'nom_matiere': gm.matiere.nom_matiere
+        } for gm in groupe_matieres]
+
 
 
 class GroupeWithEtudiantsSerializer(serializers.ModelSerializer):
-
-    etudiants  = serializers.SerializerMethodField()
-    professeur = ProfesseurSerializer(read_only=True)
-    niveau     = NiveauSerializer(read_only=True)
-    filiere    = FiliereSerializer(read_only=True)
-    matiere    = MatiereSerializer(read_only=True)
+    etudiants = serializers.SerializerMethodField()
+    professeurs = serializers.SerializerMethodField()
+    matieres = serializers.SerializerMethodField()
+    niveau = NiveauSerializer(read_only=True)
+    filiere = FiliereSerializer(read_only=True)
 
     class Meta:
-        model  = Groupe
-        fields = ['id', 'nom_groupe', 'professeur', 'niveau', 'max_etudiants', 'filiere', 'matiere', 'etudiants']
+        model = Groupe
+        fields = ['id', 'nom_groupe', 'professeurs', 'niveau', 
+                 'max_etudiants', 'filiere', 'matieres', 'etudiants']
 
-    # Custom method to retrieve students assigned to each group
     def get_etudiants(self, obj):
         etudiants_in_group = EtudiantGroupe.objects.filter(groupe=obj)
         return EtudiantSerializer([eg.etudiant for eg in etudiants_in_group], many=True).data
 
+    def get_professeurs(self, obj):
+        groupe_professeurs = GroupeProfesseur.objects.filter(groupe=obj)
+        return [{
+            'id': gp.professeur.id,
+            'nom': gp.professeur.nom,
+            'prenom': gp.professeur.prenom,
+            'commission_fixe': gp.commission_fixe
+        } for gp in groupe_professeurs]
+
+    def get_matieres(self, obj):
+        groupe_matieres = GroupeMatiere.objects.filter(groupe=obj)
+        return [{
+            'id': gm.matiere.id,
+            'nom_matiere': gm.matiere.nom_matiere
+        } for gm in groupe_matieres]
 
 """ ---------------------------------------  Update Serializer for Paiement ------------------------------------"""
 
@@ -197,14 +267,19 @@ class PaiementSerializer(serializers.ModelSerializer):
 
         paiement = Paiement.objects.create(etudiant=etudiant, groupe=groupe, **validated_data)
 
-        professeur = groupe.professeur
-        if professeur:
-            commission_amount = self.calculate_commission_amount(paiement.montant, groupe.commission_fixe, paiement.commission_percentage)
+        # Create commission for each professor in the group
+        groupe_professeurs = GroupeProfesseur.objects.filter(groupe=groupe)
+        for gp in groupe_professeurs:
+            commission_amount = self.calculate_commission_amount(
+                paiement.montant, 
+                gp.commission_fixe, 
+                paiement.commission_percentage
+            )
             Comission.objects.create(
                 montant=commission_amount,
                 date_comission=paiement.date_paiement,
                 statut_comission=paiement.statut_paiement,
-                professeur=professeur,
+                professeur=gp.professeur,
                 etudiant=etudiant,
                 groupe=groupe
             )
@@ -214,16 +289,26 @@ class PaiementSerializer(serializers.ModelSerializer):
         commission_base = min(paiement_amount, commission_fixe)
         return commission_base * (commission_percentage / 100)
 
+
+class GroupeBasicSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Groupe
+        fields = ['id', 'nom_groupe', 'niveau', 'filiere']
+
+
 class ComissionSerializer(serializers.ModelSerializer):
 
     professeur = ProfesseurSerializer(read_only=True)
     etudiant   = EtudiantSerializer(read_only=True) 
-    groupe     = GroupeSerializer(read_only=True)
+    groupe = GroupeBasicSerializer(read_only=True)
 
     class Meta:
         model = Comission
-        fields = ['id', 'montant', 'date_comission', 'statut_comission', 'professeur', 'etudiant', 'groupe']
-
+        fields = [
+            'id', 'montant', 'date_comission', 
+            'statut_comission', 'professeur',
+            'etudiant', 'groupe'
+        ]
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -233,9 +318,9 @@ class EventSerializer(serializers.ModelSerializer):
 
 
 """---------------------------------------  Serializer for USERS  ------------------------------------"""
-
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
+
 
 class StaffRegisterSerializer(serializers.ModelSerializer):
     password  = serializers.CharField(write_only=True)
@@ -264,9 +349,6 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'first_name', 'last_name']
 
 
-from rest_framework import serializers
-from django.contrib.auth.models import User
-from django.contrib.auth.password_validation import validate_password
 
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)

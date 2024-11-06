@@ -50,7 +50,6 @@ urlpatterns = [
 
     path('assign_etudiant_group/', views.assign_etudiant_group),
     path('unassign_etudiant_from_groupe/', views.unassign_etudiant_from_groupe),
-    path('list_groupes_with_etudiants/', views.list_groupes_with_etudiants),
     
     path('groupes-with-etudiants/', GroupeWithEtudiantsListView.as_view(), name='groupes-with-etudiants'),
 

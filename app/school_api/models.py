@@ -59,19 +59,58 @@ class Matiere(models.Model):
         return self.nom_matiere
 
 
+# class Groupe(models.Model):
+#     nom_groupe = models.CharField(max_length=100, default='Groupe 1')
+#     professeur = models.ForeignKey(Professeur, on_delete=models.CASCADE)
+#     niveau = models.ForeignKey(Niveau, on_delete=models.CASCADE)
+#     max_etudiants = models.IntegerField()
+#     filiere = models.ForeignKey(Filiere, on_delete=models.CASCADE)
+#     matiere = models.ForeignKey(Matiere, on_delete=models.CASCADE)
+#     commission_fixe = models.FloatField(default=120.0)  
+#     created_at = models.DateTimeField(default=timezone.now)  
+
+
+#     def __str__(self):
+#         return f"Groupe de {self.matiere.nom_matiere} - {self.niveau.nom_niveau}"
+
+
+
 class Groupe(models.Model):
     nom_groupe = models.CharField(max_length=100, default='Groupe 1')
-    professeur = models.ForeignKey(Professeur, on_delete=models.CASCADE)
     niveau = models.ForeignKey(Niveau, on_delete=models.CASCADE)
     max_etudiants = models.IntegerField()
     filiere = models.ForeignKey(Filiere, on_delete=models.CASCADE)
-    matiere = models.ForeignKey(Matiere, on_delete=models.CASCADE)
-    commission_fixe = models.FloatField(default=120.0)  
-    created_at = models.DateTimeField(default=timezone.now)  
-
+    professeurs = models.ManyToManyField(Professeur, through='GroupeProfesseur')
+    matieres = models.ManyToManyField(Matiere, through='GroupeMatiere')
+    created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        return f"Groupe de {self.matiere.nom_matiere} - {self.niveau.nom_niveau}"
+        return self.nom_groupe
+
+
+class GroupeMatiere(models.Model):
+    groupe = models.ForeignKey('Groupe', on_delete=models.CASCADE)
+    matiere = models.ForeignKey('Matiere', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = ('groupe', 'matiere')
+
+    def __str__(self):
+        return f"{self.groupe.nom_groupe} - {self.matiere.nom_matiere}"
+
+
+class GroupeProfesseur(models.Model):
+    groupe = models.ForeignKey('Groupe', on_delete=models.CASCADE)
+    professeur = models.ForeignKey('Professeur', on_delete=models.CASCADE)
+    commission_fixe = models.FloatField(default=100.0)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = ('groupe', 'professeur')
+
+    def __str__(self):
+        return f"{self.professeur.nom} - {self.groupe.nom_groupe}"
 
 
 class EtudiantGroupe(models.Model):
