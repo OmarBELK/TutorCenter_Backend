@@ -1067,3 +1067,305 @@ def dashboard_metrics(request):
         return Response({
             'error': str(e)
         }, status=500)
+    
+
+""" ------------------------------------------ Financial Views -----------------------------------------------"""
+from rest_framework import viewsets
+class DepenseViewSet(viewsets.ModelViewSet):
+    queryset = Depense.objects.all()
+    serializer_class = DepenseSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['date']
+    ordering_fields = ['date', 'montant']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Date range filtering
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date and end_date:
+            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(date__date__range=[start_date, end_date])
+
+        return queryset
+
+class SortieBanqueViewSet(viewsets.ModelViewSet):
+    queryset = SortieBanque.objects.all()
+    serializer_class = SortieBanqueSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['date', 'mode_paiement']
+    ordering_fields = ['date', 'montant']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Date range filtering
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date and end_date:
+            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d').date()
+            queryset = queryset.filter(date__date__range=[start_date, end_date])
+
+        return queryset
+    
+@api_view(['GET'])
+def financial_metrics_by_month(request):
+    # Get the date range from query parameters or default to current year
+    year = request.query_params.get('year', timezone.now().year)
+    
+    # Get all months data for the specified year
+    months_data = []
+    
+    for month in range(1, 13):
+        # Get the month name
+        month_name = datetime(int(year), month, 1).strftime('%b')
+        
+        # Get total depenses for the month
+        depenses = Depense.objects.filter(
+            date__year=year,
+            date__month=month
+        ).aggregate(total=Sum('montant'))['total'] or 0
+        
+        # Get total sorties for the month
+        sorties = SortieBanque.objects.filter(
+            date__year=year,
+            date__month=month
+        ).aggregate(total=Sum('montant'))['total'] or 0
+        
+        # Get total income (paiements) for the month
+        income = Paiement.objects.filter(
+            date_paiement__year=year,
+            date_paiement__month=month
+        ).aggregate(total=Sum('montant'))['total'] or 0
+        
+        months_data.append({
+            'name': month_name,
+            'depenses': depenses,
+            'sorties-banque': sorties,
+            'recettes': income
+        })
+    
+    return Response({
+        'year': year,
+        'data': months_data
+    })
+
+@api_view(['GET'])
+def weekly_financial_metrics(request):
+    # Get the start and end date from query params or default to current week
+    end_date = request.query_params.get('end_date', timezone.now().date())
+    if isinstance(end_date, str):
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+    
+    # Calculate start date (6 days before end date to get a full week)
+    start_date = end_date - timezone.timedelta(days=6)
+    
+    # Initialize data structure for the week
+    days_data = []
+    day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    
+    # Loop through each day of the week
+    current_date = start_date
+    while current_date <= end_date:
+        # Get day name
+        day_name = day_names[current_date.weekday()]
+        
+        # Get total paiements for the day
+        paiements = Paiement.objects.filter(
+            date_paiement__date=current_date
+        ).aggregate(total=Sum('montant'))['total'] or 0
+        
+        # Get total commissions for the day
+        commissions = Comission.objects.filter(
+            date_comission__date=current_date
+        ).aggregate(total=Sum('montant'))['total'] or 0
+        
+        days_data.append({
+            'name': day_name,
+            'paiements': float(paiements),
+            'commissions': float(commissions)
+        })
+        
+        current_date += timezone.timedelta(days=1)
+    
+    return Response({
+        'start_date': start_date.isoformat(),
+        'end_date': end_date.isoformat(),
+        'data': days_data
+    })
+
+
+""" ------------------------------------------ Detail of a Etudiant -----------------------------------------------"""
+
+@api_view(['GET'])
+def etudiant_details(request, pk):
+    try:
+        etudiant = Etudiant.objects.get(pk=pk)
+        
+        # Get all groups the student is in
+        etudiant_groupes = EtudiantGroupe.objects.filter(etudiant=etudiant)
+        
+        groups_data = []
+        for eg in etudiant_groupes:
+            groupe = eg.groupe
+            
+            # Get matieres for this group
+            matieres = GroupeMatiere.objects.filter(groupe=groupe)
+            matieres_data = [{
+                'id': gm.matiere.id,
+                'nom_matiere': gm.matiere.nom_matiere
+            } for gm in matieres]
+            
+            # Get professeurs for this group
+            professeurs = GroupeProfesseur.objects.filter(groupe=groupe)
+            professeurs_data = [{
+                'id': gp.professeur.id,
+                'nom': gp.professeur.nom,
+                'prenom': gp.professeur.prenom,
+                'commission_fixe': gp.commission_fixe
+            } for gp in professeurs]
+            
+            groups_data.append({
+                'id': groupe.id,
+                'nom_groupe': groupe.nom_groupe,
+                'niveau': {
+                    'id': groupe.niveau.id,
+                    'nom_niveau': groupe.niveau.nom_niveau
+                },
+                'filiere': {
+                    'id': groupe.filiere.id,
+                    'nom_filiere': groupe.filiere.nom_filiere
+                },
+                'matieres': matieres_data,
+                'professeurs': professeurs_data
+            })
+        
+        # Get all payments made by the student
+        paiements = Paiement.objects.filter(etudiant=etudiant)
+        paiements_data = [{
+            'id': p.id,
+            'montant': p.montant,
+            'date_paiement': p.date_paiement,
+            'statut_paiement': p.statut_paiement,
+            'groupe': p.groupe.nom_groupe
+        } for p in paiements]
+
+        response_data = {
+            'id': etudiant.id,
+            'nom': etudiant.nom,
+            'prenom': etudiant.prenom,
+            'date_naissance': etudiant.date_naissance,
+            'telephone': etudiant.telephone,
+            'adresse': etudiant.adresse,
+            'sexe': etudiant.sexe,
+            'nationalite': etudiant.nationalite,
+            'contact_urgence': etudiant.contact_urgence,
+            'created_at': etudiant.created_at,
+            'groupes': groups_data,
+            'paiements': paiements_data,
+            'total_paiements': sum(p.montant for p in paiements),
+            'total_groupes': len(groups_data)
+        }
+        
+        return Response(response_data)
+        
+    except Etudiant.DoesNotExist:
+        return Response(
+            {'error': 'Etudiant not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
+
+@api_view(['GET'])
+def professeur_details(request, pk):
+    try:
+        professeur = Professeur.objects.get(pk=pk)
+        
+        # Get all groups the professor teaches
+        groupe_professeurs = GroupeProfesseur.objects.filter(professeur=professeur)
+        groups_data = []
+        
+        for gp in groupe_professeurs:
+            groupe = gp.groupe
+            
+            # Get matieres for this group
+            matieres = GroupeMatiere.objects.filter(groupe=groupe)
+            matieres_data = [{
+                'id': gm.matiere.id,
+                'nom_matiere': gm.matiere.nom_matiere
+            } for gm in matieres]
+            
+            # Get students for this group
+            etudiants = EtudiantGroupe.objects.filter(groupe=groupe)
+            etudiants_data = [{
+                'id': eg.etudiant.id,
+                'nom': eg.etudiant.nom,
+                'prenom': eg.etudiant.prenom
+            } for eg in etudiants]
+            
+            groups_data.append({
+                'id': groupe.id,
+                'nom_groupe': groupe.nom_groupe,
+                'commission_fixe': gp.commission_fixe,
+                'filiere': {
+                    'id': groupe.filiere.id,
+                    'nom_filiere': groupe.filiere.nom_filiere
+                },
+                'niveau': {
+                    'id': groupe.niveau.id,
+                    'nom_niveau': groupe.niveau.nom_niveau
+                },
+                'max_etudiants': groupe.max_etudiants,
+                'matieres': matieres_data,
+                'etudiants': etudiants_data,
+                'total_etudiants': len(etudiants_data)
+            })
+
+        # Get all commissions for the professor
+        commissions = Comission.objects.filter(professeur=professeur)
+        commissions_data = [{
+            'id': c.id,
+            'montant': c.montant,
+            'date_comission': c.date_comission,
+            'statut_comission': c.statut_comission,
+            'etudiant': {
+                'id': c.etudiant.id,
+                'nom': c.etudiant.nom,
+                'prenom': c.etudiant.prenom
+            },
+            'groupe': {
+                'id': c.groupe.id,
+                'nom_groupe': c.groupe.nom_groupe
+            }
+        } for c in commissions]
+
+        # Calculate total commissions
+        total_commissions = commissions.aggregate(total=Sum('montant'))['total'] or 0
+
+        response_data = {
+            'id': professeur.id,
+            'nom': professeur.nom,
+            'prenom': professeur.prenom,
+            'telephone': professeur.telephone,
+            'adresse': professeur.adresse,
+            'date_naissance': professeur.date_naissance,
+            'sexe': professeur.sexe,
+            'nationalite': professeur.nationalite,
+            'specialite': professeur.specialite,
+            'created_at': professeur.created_at,
+            'groupes': groups_data,
+            'commissions': commissions_data,
+            'total_commissions': total_commissions,
+            'total_groupes': len(groups_data)
+        }
+        
+        return Response(response_data)
+        
+    except Professeur.DoesNotExist:
+        return Response(
+            {'error': 'Professeur not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )

@@ -16,12 +16,15 @@ urlpatterns = [
     path('etudiants/create/', views.create_etudiant, name='create-etudiant'),
     path('etudiants/update/<int:pk>/', views.update_etudiant, name='update-etudiant'),
     path('etudiants/delete/<int:pk>/', views.delete_etudiant, name='delete-etudiant'),
+    path('etudiants/<int:pk>/details/', etudiant_details, name='etudiant-details'),
+
 
     # Professeur paths
     path('professeur_list/', ProfesseurListView.as_view(), name='professeur-list'),
     path('professeurs/create/', views.create_professeur, name='create-professeur'),
     path('professeurs/update/<int:pk>/', views.update_professeur, name='update-professeur'),
     path('professeurs/delete/<int:pk>/', views.delete_professeur, name='delete-professeur'),
+    path('professeurs/<int:pk>/details/', professeur_details, name='professeur-details'),
 
     # Niveau paths
     path('niveau_list/', NiveauListView.as_view(), name='niveau-list'),
@@ -76,8 +79,38 @@ urlpatterns = [
     path('staff/change-password/', views.StaffChangePasswordView.as_view(), name='staff-change-password'),
 
 
+
+    # Financial Tables
+
+    path('depenses/', DepenseViewSet.as_view({
+            'get': 'list',
+            'post': 'create'
+        }), name='depense-list'),
+
+    path('depenses/<int:pk>/', DepenseViewSet.as_view({
+            'get': 'retrieve',
+            'put': 'update',
+            'patch': 'partial_update',
+            'delete': 'destroy'
+        }), name='depense-detail'),
+        
+    path('sorties-banque/', SortieBanqueViewSet.as_view({
+            'get': 'list',
+            'post': 'create'
+        }), name='sortie-banque-list'),
+
+    path('sorties-banque/<int:pk>/', SortieBanqueViewSet.as_view({
+            'get': 'retrieve',
+            'put': 'update',
+            'patch': 'partial_update',
+            'delete': 'destroy'
+        }), name='sortie-banque-detail'),
+
     # Dashboard Metrics
     path('dashboard/metrics/', dashboard_metrics, name='dashboard-metrics'),
+    path('dashboard/financial-metrics/', financial_metrics_by_month, name='financial-metrics'),
+    path('dashboard/weekly-financial-metrics/', weekly_financial_metrics, name='weekly-financial-metrics'),
+
 ]
 
 

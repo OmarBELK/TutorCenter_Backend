@@ -154,3 +154,38 @@ class Event(models.Model):
 
     def __str__(self):
         return self.title
+
+
+""" ------------------------------------------ Financial Models -----------------------------------------------"""
+
+
+
+from django.db import models
+from django.utils import timezone
+
+class Depense(models.Model):
+    date = models.DateTimeField(default=timezone.now)
+    libele = models.CharField(max_length=200)
+    montant = models.FloatField()
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"{self.libele} - {self.montant}"
+
+class SortieBanque(models.Model):
+    PAYMENT_MODES = [
+        ('CHEQUE', 'Chèque'),
+        ('VIREMENT', 'Virement'),
+        ('ESPECES', 'Espèces'),
+        ('CARTE', 'Carte Bancaire'),
+    ]
+
+    date = models.DateTimeField(default=timezone.now)
+    mode_paiement = models.CharField(max_length=50, choices=PAYMENT_MODES)
+    montant = models.FloatField()
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"{self.mode_paiement} - {self.montant}"
+    
+    

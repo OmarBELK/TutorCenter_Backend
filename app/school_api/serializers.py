@@ -367,3 +367,17 @@ class ChangePasswordSerializer(serializers.Serializer):
         if value.isdigit():
             raise serializers.ValidationError("Password cannot be entirely numeric")
         return value
+    
+
+
+""" ------------------------------------------ Financial Serializers -----------------------------------------------"""
+
+class DepenseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Depense
+        fields = ['id', 'date', 'libele', 'montant', 'created_at']
+
+class SortieBanqueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SortieBanque
+        fields = ['id', 'date', 'mode_paiement', 'montant', 'created_at']
