@@ -930,7 +930,8 @@ from .serializers import StaffRegisterSerializer, UserSerializer
 
 class StaffRegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
-    permission_classes = [IsAdminUser]
+    #permission_classes = [IsAdminUser]
+    permission_classes = [IsAuthenticated]
     serializer_class = StaffRegisterSerializer
 
 class StaffProfileView(generics.RetrieveUpdateAPIView):
