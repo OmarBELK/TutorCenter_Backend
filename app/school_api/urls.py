@@ -79,7 +79,6 @@ urlpatterns = [
     path('staff/change-password/', views.StaffChangePasswordView.as_view(), name='staff-change-password'),
 
 
-
     # Financial Tables
 
     path('depenses/', DepenseViewSet.as_view({

@@ -57,9 +57,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -67,17 +67,9 @@ MIDDLEWARE = [
 ]
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # Only for development!
-
-# For production, specify allowed origins:
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:3000",
-#     "http://127.0.0.1:3000",
-#     "https://yourdomain.com",
-# ]
-
-
-# Additional CORS settings if needed
 CORS_ALLOW_CREDENTIALS = True
+APPEND_SLASH = False
+
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -86,6 +78,7 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
+
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -98,22 +91,14 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-
-# Update CORS settings
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
-APPEND_SLASH = False  # Add this line
-CORS_URLS_REGEX = r'^/api/.*$'  # Add this line
-
-# Update REST_FRAMEWORK settings
+# REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
-    'TRAILING_SLASH': False  # Add this line
+    'TRAILING_SLASH': False
 }
-
 
 ROOT_URLCONF = 'core.urls'
 
@@ -199,11 +184,6 @@ STATIC_ROOT = '/vol/web/static'
 #     'rest_framework_simplejwt.authentication.JWTAuthentication',
 #     ),
 # }
-
-
-
-
-
 
 
 
