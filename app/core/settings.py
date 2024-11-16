@@ -98,6 +98,23 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+
+# Update CORS settings
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+APPEND_SLASH = False  # Add this line
+CORS_URLS_REGEX = r'^/api/.*$'  # Add this line
+
+# Update REST_FRAMEWORK settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    'TRAILING_SLASH': False  # Add this line
+}
+
+
 ROOT_URLCONF = 'core.urls'
 
 TEMPLATES = [
@@ -183,14 +200,12 @@ STATIC_ROOT = '/vol/web/static'
 #     ),
 # }
 
-# Add JWT settings
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 
-}
+
+
+
+
+
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
