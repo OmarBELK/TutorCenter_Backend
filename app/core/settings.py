@@ -72,6 +72,7 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
 ]
+
 CORS_ALLOW_CREDENTIALS = True
 #APPEND_SLASH = False
 
@@ -84,16 +85,21 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
+# CORS_ALLOW_HEADERS = [
+#     'accept',
+#     'accept-encoding',
+#     'authorization',
+#     'content-type',
+#     'dnt',
+#     'origin',
+#     'user-agent',
+#     'x-csrftoken',
+#     'x-requested-with',
+# ]
+
 CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+    "content-type",
+    "authorization",
 ]
 
 # REST Framework settings
