@@ -75,7 +75,6 @@ CORS_ALLOWED_ORIGINS = [
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",  # For development
-    "https://your-nextjs-domain.com",  # Add your production domain here
 ]
 
 CORS_ALLOW_CREDENTIALS = True
