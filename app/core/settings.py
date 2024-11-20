@@ -67,18 +67,20 @@ MIDDLEWARE = [
 ]
 # CORS settings
 
-#CORS_ALLOW_ALL_ORIGINS = True  # Only for development!
+CORS_ALLOW_ALL_ORIGINS = True  # Enable this for development
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-]
+# Comment out or remove these specific origins settings
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:5173",
+#     "http://127.0.0.1:5173",
+# ]
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",  # For development
-]
+# CSRF_TRUSTED_ORIGINS = [
+#     "http://localhost:5173",
+#     "http://127.0.0.1:5173",
+# ]
 
 CORS_ALLOW_CREDENTIALS = True
-#APPEND_SLASH = False
 
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -89,21 +91,16 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-# CORS_ALLOW_HEADERS = [
-#     'accept',
-#     'accept-encoding',
-#     'authorization',
-#     'content-type',
-#     'dnt',
-#     'origin',
-#     'user-agent',
-#     'x-csrftoken',
-#     'x-requested-with',
-# ]
-
 CORS_ALLOW_HEADERS = [
-    "content-type",
-    "authorization",
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
 # REST Framework settings
