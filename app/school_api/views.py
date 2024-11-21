@@ -766,20 +766,125 @@ class PaiementListView(generics.ListAPIView):
     
 
 @api_view(['POST'])
-def create_paiement(request):
-    serializer = PaiementSerializer(data=request.data)
-    if serializer.is_valid():   
-        try:
-            paiement = serializer.save()
-            return Response(PaiementSerializer(paiement).data, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+def create_payment(request):
+    """Create a new payment record"""
+    data = request.data
+    
+    try:
+        # Get the groupe's subscription price first
+        groupe = Groupe.objects.get(id=data['groupe_id'])
+        montant_total = groupe.prix_subscription  # Get this first
+        print("montant_total",montant_total)
+        
+        montant = data['montant']
+        frais_inscription = data.get('frais_inscription', 0)
+        
+        total_payment = montant + frais_inscription
+        remaining = montant_total - total_payment    # Now this will be correct
+        print("remaining",remaining)
+        
+        # Create payment with correct montant_total and remaining
+        payment = Paiement.objects.create(
+            montant=total_payment,                   # Total paid (montant + frais_inscription)
+            montant_total=montant_total,            # From groupe.prix_subscription
+            remaining=remaining,                     # montant_total - total_payment
+            frais_inscription=frais_inscription,
+            etudiant_id=data['etudiant_id'],
+            groupe_id=data['groupe_id'],
+            statut_paiement='PARTIAL' if remaining > 0 else 'PAID'
+        )
+
+        # Create commissions
+        commission_percentage = data.get('commission_percentage', 0)
+        groupe_professeurs = GroupeProfesseur.objects.filter(groupe=groupe)
+        for gp in groupe_professeurs:
+            commission_amount = min(total_payment, gp.commission_fixe) * (commission_percentage / 100)
+            Comission.objects.create(
+                montant=commission_amount,
+                date_comission=payment.date_paiement,
+                statut_comission='PAID',
+                professeur=gp.professeur,
+                etudiant_id=data['etudiant_id'],
+                groupe=groupe
+            )
+        
+        return Response({
+            'payment': PaiementSerializer(payment).data,
+            'message': f"Payment received. Total paid: {total_payment} DH (including {frais_inscription} DH registration fee), Remaining: {remaining} DH"
+        }, status=201)
+
+    except Groupe.DoesNotExist:
+        return Response({
+            'error': 'Groupe not found'
+        }, status=404)
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=400)
 
 
+@api_view(['PUT'])
+def update_payment(request, payment_id):
+    """Update remaining amount of an existing payment"""
+    try:
+        payment = Paiement.objects.get(id=payment_id)
+        new_payment_amount = request.data['montant']
+        
+        if new_payment_amount > payment.remaining:
+            return Response({
+                'error': f'Payment amount ({new_payment_amount}) cannot exceed remaining amount ({payment.remaining})'
+            }, status=400)
+        
+        # Update the existing payment record
+        payment.montant += new_payment_amount
+        payment.remaining -= new_payment_amount
+        payment.statut_paiement = 'PAID' if payment.remaining == 0 else 'PARTIAL'
+        payment.save()
+        
+        return Response({
+            'payment': PaiementSerializer(payment).data,
+            'message': f"Payment updated. Remaining: {payment.remaining} DH"
+        })
+    except Paiement.DoesNotExist:
+        return Response({'error': 'Payment not found'}, status=404)
 
+@api_view(['GET'])
+def get_payment_history(request, etudiant_id, groupe_id):
+    """Get all payments for a student in a group"""
+    try:
+        payments = Paiement.objects.filter(
+            etudiant_id=etudiant_id,
+            groupe_id=groupe_id
+        ).order_by('-date_paiement')
+
+        # Get the groupe's subscription price
+        groupe = Groupe.objects.get(id=groupe_id)
+        
+        return Response({
+            'student': f"{payments[0].etudiant.nom} {payments[0].etudiant.prenom}" if payments else None,
+            'groupe': groupe.nom_groupe,
+            'subscription_price': groupe.prix_subscription,
+            'payment_history': [{
+                'id': payment.id,
+                'date': payment.date_paiement,
+                'montant': payment.montant,
+                'frais_inscription': payment.frais_inscription,
+                'total_paid': payment.montant + payment.frais_inscription,
+                'remaining': payment.remaining,
+                'status': payment.statut_paiement
+            } for payment in payments],
+            'latest_payment': {
+                'montant': payments[0].montant,
+                'remaining': payments[0].remaining,
+                'status': payments[0].statut_paiement,
+                'date': payments[0].date_paiement
+            } if payments else None
+        })
+    except Groupe.DoesNotExist:
+        return Response({'error': 'Group not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=400)
 """ -------------------------------------                Comissions          ---------------------------------------"""
-
 
 class ComissionListView(generics.ListAPIView):
     queryset = Comission.objects.all()
@@ -816,103 +921,6 @@ class ComissionListView(generics.ListAPIView):
             'results': serializer.data,
             'total_amount': total_amount
         })
-
-""" -------------------------------------                Event          ---------------------------------------"""
-from rest_framework import generics, filters, status
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from django_filters.rest_framework import DjangoFilterBackend
-from .models import Event
-from .serializers import EventSerializer
-from django.utils import timezone
-
-class EventListView(generics.ListCreateAPIView):
-    queryset = Event.objects.all()
-    serializer_class = EventSerializer
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['groupe', 'professeur']
-    ordering_fields = ['start_time', 'end_time']
-
-    def create(self, request, *args, **kwargs):
-        # Validate that the professor is associated with the group
-        groupe_id = request.data.get('groupe')
-        professeur_id = request.data.get('professeur')
-        
-        if not GroupeProfesseur.objects.filter(
-            groupe_id=groupe_id, 
-            professeur_id=professeur_id
-        ).exists():
-            return Response(
-                {'error': 'Professor is not associated with this group'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
-        return super().create(request, *args, **kwargs)
-
-@api_view(['POST'])
-def create_event(request):
-    """
-    Create a new event.
-
-    POST:
-    - Creates a new event.
-
-    Returns:
-    - 201 Created: Successful POST request
-    - 400 Bad Request: Invalid data in POST request
-    """
-    serializer = EventSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['PUT'])
-def update_event(request, pk):
-    """
-    Update an existing event.
-
-    PUT:
-    - Updates an existing event identified by the pk (primary key).
-
-    Returns:
-    - 200 OK: Successful update
-    - 400 Bad Request: Invalid data in PUT request
-    - 404 Not Found: Event with given ID not found
-    """
-    try:
-        event = Event.objects.get(pk=pk)
-    except Event.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    serializer = EventSerializer(event, data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['DELETE'])
-def delete_event(request, pk):
-    """
-    Delete an existing event.
-
-    DELETE:
-    - Deletes an existing event identified by the pk (primary key).
-
-    Returns:
-    - 204 No Content: Successful deletion
-    - 404 Not Found: Event with given ID not found
-    """
-    try:
-        event = Event.objects.get(pk=pk)
-    except Event.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
-    event.delete()
-    return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-
 
 
 

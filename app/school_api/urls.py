@@ -58,14 +58,12 @@ urlpatterns = [
 
 
     path('paiements/', PaiementListView.as_view(), name='paiement-list'),
-    path('paiements/create/', views.create_paiement, name='create-paiement'),
+    path('payments/create/', views.create_payment, name='create-payment'),
+    path('payments/<int:payment_id>/update/', views.update_payment, name='update-payment'),
+    path('payments/history/<int:etudiant_id>/<int:groupe_id>/', views.get_payment_history, name='payment-history'),
 
     path('commissions/', ComissionListView.as_view(), name='commission-list'),
 
-    path('events/', EventListView.as_view(), name='event-list'),
-    path('events/create/', views.create_event, name='create-event'),
-    path('events/update/<int:pk>/', views.update_event, name='update-event'),
-    path('events/delete/<int:pk>/', views.delete_event, name='delete-event'),
 
 
     # JWT Authentication

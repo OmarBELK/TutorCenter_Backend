@@ -76,10 +76,11 @@ class Matiere(models.Model):
 
 
 class Groupe(models.Model):
-    nom_groupe = models.CharField(max_length=100, default='Groupe 1')
+    nom_groupe = models.CharField(max_length=100)
     niveau = models.ForeignKey(Niveau, on_delete=models.CASCADE)
     max_etudiants = models.IntegerField()
     filiere = models.ForeignKey(Filiere, on_delete=models.CASCADE)
+    prix_subscription = models.FloatField(default=0)
     professeurs = models.ManyToManyField(Professeur, through='GroupeProfesseur')
     matieres = models.ManyToManyField(Matiere, through='GroupeMatiere')
     created_at = models.DateTimeField(default=timezone.now)
@@ -133,27 +134,19 @@ class Comission(models.Model):
 
 
 class Paiement(models.Model):
-    montant = models.FloatField()
+    montant = models.FloatField(blank=True, null=True)                    # Amount paid
+    montant_total = models.FloatField(blank=True, null=True)              # Total course cost
+    remaining = models.FloatField(blank=True, null=True)                  # Remaining amount (we set this manually)
+    frais_inscription = models.FloatField(default=100)  # Registration fee, default 100
     date_paiement = models.DateTimeField(default=timezone.now)
     statut_paiement = models.CharField(max_length=50)
     etudiant = models.ForeignKey(Etudiant, on_delete=models.CASCADE)
-    groupe = models.ForeignKey(Groupe, on_delete=models.CASCADE, default=1)  # Associate with a specific group
-    commission_percentage = models.FloatField(default=100.0)  # Default commission percentage
+    groupe = models.ForeignKey(Groupe, on_delete=models.CASCADE)
 
     def __str__(self):
-        return f"Paiement by {self.etudiant.nom} for group {self.groupe.id} on {self.date_paiement}"
-    
+        return f"{self.etudiant.nom} - Paid: {self.montant} - Remaining: {self.remaining}"
 
-class Event(models.Model):
-    title = models.CharField(max_length=200)
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
-    description = models.TextField(blank=True, null=True)
-    groupe = models.ForeignKey(Groupe, on_delete=models.CASCADE, related_name='events')
-    professeur = models.ForeignKey(Professeur, on_delete=models.CASCADE, related_name='events')
 
-    def __str__(self):
-        return self.title
 
 
 """ ------------------------------------------ Financial Models -----------------------------------------------"""
