@@ -176,7 +176,7 @@ class GroupeDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Groupe
-        fields = ['id', 'nom_groupe', 'niveau', 'max_etudiants', 
+        fields = ['id', 'nom_groupe', 'prix_subscription', 'niveau', 'max_etudiants', 
                  'filiere', 'professeurs', 'matieres', 'created_at']
 
     def get_professeurs(self, obj):
