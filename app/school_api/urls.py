@@ -50,12 +50,14 @@ urlpatterns = [
     path('groupes/update/<int:pk>/', views.update_groupe, name='update-groupe'),
     path('groupes/delete/<int:pk>/', views.delete_groupe, name='delete-groupe'),
 
+    path('etudiants/assign-group/', views.assign_etudiant_group, name='assign-etudiant-group'),
+
+    path('etudiants/add-to-group/', views.add_student_to_group, name='add-etudiant-group'),
 
     path('assign_etudiant_group/', views.assign_etudiant_group),
     path('unassign_etudiant_from_groupe/', views.unassign_etudiant_from_groupe),
     
     path('groupes-with-etudiants/', GroupeWithEtudiantsListView.as_view(), name='groupes-with-etudiants'),
-
 
     path('paiements/', PaiementListView.as_view(), name='paiement-list'),
     path('payments/create/', views.create_payment, name='create-payment'),
@@ -63,7 +65,6 @@ urlpatterns = [
     path('payments/history/<int:etudiant_id>/<int:groupe_id>/', views.get_payment_history, name='payment-history'),
 
     path('commissions/', ComissionListView.as_view(), name='commission-list'),
-
 
 
     # JWT Authentication

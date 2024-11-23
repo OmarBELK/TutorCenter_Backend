@@ -604,6 +604,64 @@ def delete_groupe(request, pk):
 from rest_framework.exceptions import ValidationError
 
 @api_view(['POST'])
+def add_student_to_group(request):
+    """
+    Add an existing student to an existing group
+    """
+    try:
+        student_id = request.data.get('student_id')
+        group_id = request.data.get('group_id')
+
+        # Validate input
+        if not student_id or not group_id:
+            return Response(
+                {'error': 'Both student_id and group_id are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get student and group
+        try:
+            student = Etudiant.objects.get(id=student_id)
+            group = Groupe.objects.get(id=group_id)
+        except Etudiant.DoesNotExist:
+            return Response(
+                {'error': 'Student not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Groupe.DoesNotExist:
+            return Response(
+                {'error': 'Group not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check if group has space
+        current_students = EtudiantGroupe.objects.filter(groupe=group).count()
+        if current_students >= group.max_etudiants:
+            return Response(
+                {'error': f'Group {group.nom_groupe} is full ({group.max_etudiants} students maximum)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create the association
+        EtudiantGroupe.objects.create(etudiant=student, groupe=group)
+
+        return Response({
+            'message': f'Student successfully added to group {group.nom_groupe}',
+            'data': {
+                'student_id': student.id,
+                'group_id': group.id,
+                'group_name': group.nom_groupe
+            }
+        }, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+@api_view(['POST'])
 def assign_etudiant_group(request):
     """
     Handle assigning a student to a group.
@@ -624,6 +682,7 @@ def assign_etudiant_group(request):
             {"error": str(e.detail)},  # Use Django's built-in error detail
             status=status.HTTP_400_BAD_REQUEST
         )
+
 
 
 @api_view(['DELETE'])
@@ -1378,3 +1437,68 @@ def professeur_details(request, pk):
             {'error': 'Professeur not found'}, 
             status=status.HTTP_404_NOT_FOUND
         )
+
+@api_view(['POST'])
+#@permission_classes([IsAuthenticated])
+def add_student_to_new_group(request):
+    try:
+        data = request.data
+        etudiant_id = data.get('etudiant_id')
+        groupe_id = data.get('groupe_id')
+        
+        # Validate input
+        if not etudiant_id or not groupe_id:
+            return Response({
+                'error': 'Both etudiant_id and groupe_id are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Get student and group
+        try:
+            etudiant = Etudiant.objects.get(id=etudiant_id)
+            groupe = Groupe.objects.get(id=groupe_id)
+        except Etudiant.DoesNotExist:
+            return Response({'error': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Groupe.DoesNotExist:
+            return Response({'error': 'Group not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+        # Check if student is already in this group
+        if EtudiantGroupe.objects.filter(etudiant=etudiant, groupe=groupe).exists():
+            return Response({
+                'error': f'Student is already in group {groupe.nom_groupe}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Check if group has space
+        current_students = EtudiantGroupe.objects.filter(groupe=groupe).count()
+        if current_students >= groupe.max_etudiants:
+            return Response({
+                'error': f'Group {groupe.nom_groupe} is full ({groupe.max_etudiants} students maximum)'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Add student to group
+        etudiant_groupe = EtudiantGroupe.objects.create(
+            etudiant=etudiant,
+            groupe=groupe
+        )
+        
+        return Response({
+            'message': f'Student successfully added to group {groupe.nom_groupe}',
+            'data': {
+                'student': {
+                    'id': etudiant.id,
+                    'nom': etudiant.nom,
+                    'prenom': etudiant.prenom
+                },
+                'group': {
+                    'id': groupe.id,
+                    'nom_groupe': groupe.nom_groupe,
+                    'current_students': current_students + 1,
+                    'max_students': groupe.max_etudiants
+                },
+                'date_inscription': etudiant_groupe.date_inscription
+            }
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_400_BAD_REQUEST)

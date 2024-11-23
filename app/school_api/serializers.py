@@ -123,8 +123,30 @@ class MatiereSerializer(serializers.ModelSerializer):
 class EtudiantGroupeSerializer(serializers.ModelSerializer):
     class Meta:
         model = EtudiantGroupe
-        fields = '__all__'
+        fields = ['id', 'etudiant', 'groupe', 'date_inscription']
         
+    def validate(self, data):
+        """
+        Check that the student isn't already in the group and the group isn't full
+        """
+        etudiant = data['etudiant']
+        groupe = data['groupe']
+        
+        # Check if student is already in this group
+        if EtudiantGroupe.objects.filter(etudiant=etudiant, groupe=groupe).exists():
+            raise serializers.ValidationError(
+                f"Student is already assigned to group {groupe.nom_groupe}"
+            )
+            
+        # Check if group has space
+        current_students = EtudiantGroupe.objects.filter(groupe=groupe).count()
+        if current_students >= groupe.max_etudiants:
+            raise serializers.ValidationError(
+                f"Group {groupe.nom_groupe} is full ({groupe.max_etudiants} students maximum)"
+            )
+            
+        return data
+
 
 """ -------- These are two new serializers for the many to many relationship between groupe and professeur and groupe and matiere --------"""
 
