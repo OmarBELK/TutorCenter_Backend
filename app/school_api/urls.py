@@ -60,7 +60,7 @@ urlpatterns = [
     path('groupes-with-etudiants/', GroupeWithEtudiantsListView.as_view(), name='groupes-with-etudiants'),
 
     path('paiements/', PaiementListView.as_view(), name='paiement-list'),
-    path('payments/create/', views.create_payment, name='create-payment'),
+    path('payments/create/', views.create_payments, name='create-payment'),
     path('payments/<int:payment_id>/update/', views.update_payment, name='update-payment'),
     path('payments/history/<int:etudiant_id>/<int:groupe_id>/', views.get_payment_history, name='payment-history'),
 

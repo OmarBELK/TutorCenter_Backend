@@ -825,61 +825,85 @@ class PaiementListView(generics.ListAPIView):
     
 
 @api_view(['POST'])
-def create_payment(request):
-    """Create a new payment record"""
-    data = request.data
+def create_payments(request):
+    """
+    Create multiple payment records and associated commissions.
     
-    try:
-        # Get the groupe's subscription price first
-        groupe = Groupe.objects.get(id=data['groupe_id'])
-        montant_total = groupe.prix_subscription  # Get this first
-        print("montant_total",montant_total)
-        
-        montant = data['montant']
-        frais_inscription = data.get('frais_inscription', 0)
-        
-        total_payment = montant + frais_inscription
-        remaining = montant_total - total_payment    # Now this will be correct
-        print("remaining",remaining)
-        
-        # Create payment with correct montant_total and remaining
-        payment = Paiement.objects.create(
-            montant=total_payment,                   # Total paid (montant + frais_inscription)
-            montant_total=montant_total,            # From groupe.prix_subscription
-            remaining=remaining,                     # montant_total - total_payment
-            frais_inscription=frais_inscription,
-            etudiant_id=data['etudiant_id'],
-            groupe_id=data['groupe_id'],
-            statut_paiement='PARTIAL' if remaining > 0 else 'PAID'
-        )
+    Each payment should include:
+    - etudiant_id: ID of the student
+    - groupe_id: ID of the group
+    - montant: Payment amount
+    
+    Optional fields:
+    - frais_inscription: Registration fee (default: 0)
+    - commission_percentage: Commission percentage for professors (default: 0)
+    """
+    payments_data = request.data.get('payments', [])
+    responses = []
 
-        # Create commissions
-        commission_percentage = data.get('commission_percentage', 0)
-        groupe_professeurs = GroupeProfesseur.objects.filter(groupe=groupe)
-        for gp in groupe_professeurs:
-            commission_amount = min(total_payment, gp.commission_fixe) * (commission_percentage / 100)
-            Comission.objects.create(
-                montant=commission_amount,
-                date_comission=payment.date_paiement,
-                statut_comission='PAID',
-                professeur=gp.professeur,
+    for data in payments_data:
+        try:
+            # Validate required fields
+            required_fields = ['etudiant_id', 'groupe_id', 'montant']
+            for field in required_fields:
+                if field not in data:
+                    responses.append({
+                        'error': f'Missing required field: {field}',
+                        'data': data
+                    })
+                    continue
+
+            # Get the groupe's subscription price
+            groupe = Groupe.objects.get(id=data['groupe_id'])
+            montant_total = groupe.prix_subscription
+
+            montant = data['montant']
+            frais_inscription = data.get('frais_inscription', 0)
+            total_payment = montant + frais_inscription
+            remaining = montant_total - total_payment
+
+            # Create payment
+            payment = Paiement.objects.create(
+                montant=total_payment,
+                montant_total=montant_total,
+                remaining=remaining,
+                frais_inscription=frais_inscription,
                 etudiant_id=data['etudiant_id'],
-                groupe=groupe
+                groupe_id=data['groupe_id'],
+                statut_paiement='PARTIAL' if remaining > 0 else 'PAID'
             )
-        
-        return Response({
-            'payment': PaiementSerializer(payment).data,
-            'message': f"Payment received. Total paid: {total_payment} DH (including {frais_inscription} DH registration fee), Remaining: {remaining} DH"
-        }, status=201)
 
-    except Groupe.DoesNotExist:
-        return Response({
-            'error': 'Groupe not found'
-        }, status=404)
-    except Exception as e:
-        return Response({
-            'error': str(e)
-        }, status=400)
+            # Create commissions
+            commission_percentage = data.get('commission_percentage', 0)
+            groupe_professeurs = GroupeProfesseur.objects.filter(groupe=groupe)
+            for gp in groupe_professeurs:
+                commission_amount = min(total_payment, gp.commission_fixe) * (commission_percentage / 100)
+                Comission.objects.create(
+                    montant=commission_amount,
+                    date_comission=payment.date_paiement,
+                    statut_comission='PAID',
+                    professeur=gp.professeur,
+                    etudiant_id=data['etudiant_id'],
+                    groupe=groupe
+                )
+
+            responses.append({
+                'payment': PaiementSerializer(payment).data,
+                'message': f"Payment received. Total paid: {total_payment} DH (including {frais_inscription} DH registration fee), Remaining: {remaining} DH"
+            })
+
+        except Groupe.DoesNotExist:
+            responses.append({
+                'error': 'Groupe not found',
+                'data': data
+            })
+        except Exception as e:
+            responses.append({
+                'error': str(e),
+                'data': data
+            })
+
+    return Response(responses, status=201)
 
 
 @api_view(['PUT'])
