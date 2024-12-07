@@ -40,11 +40,11 @@ services:
     volumes:
       - static-data:/vol/static  # Ensure it matches app's volume
 
-    frontend:
-      image: ${DOCKER_IMAGE_FRONTEND}
-      restart: always
-      ports:
-        - "82:82"
+  frontend:
+    image: ${DOCKER_IMAGE_FRONTEND}
+    restart: always
+    ports:
+      - "82:82"
 
 volumes:
   postgres-data:
