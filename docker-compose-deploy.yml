@@ -17,7 +17,7 @@ services:
     depends_on:
       - db
     ports:
-      - "8001:8001"  # Ensure the app exposes the uWSGI port
+      - "8000:8000"  # Ensure the app exposes the uWSGI port
 
   db:
     image: postgres:13-alpine
@@ -36,7 +36,7 @@ services:
     depends_on:
       - app
     ports:
-      - "81:8001"  # Change this to 81 to avoid conflict with the app's port
+      - "80:8000"  
     volumes:
       - static-data:/vol/static  # Ensure it matches app's volume
 
