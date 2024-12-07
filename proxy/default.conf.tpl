@@ -5,8 +5,6 @@ server {
 
     location / {
         proxy_pass http://frontend:82;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
     }
 
     location /api {
