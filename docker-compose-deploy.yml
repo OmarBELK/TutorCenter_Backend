@@ -36,7 +36,7 @@ services:
     depends_on:
       - app
     ports:
-      - "80:8000"  
+      - "80:80"  # Changed from 80:8000 to 80:80
     volumes:
       - static-data:/vol/static  # Ensure it matches app's volume
 
