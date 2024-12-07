@@ -16,8 +16,9 @@ services:
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
     depends_on:
       - db
-    ports:
-      - "8000:8000"  # Ensure the app exposes the uWSGI port
+    expose:
+      - "9000"  # Expose uwsgi port
+
 
   db:
     image: postgres:13-alpine
@@ -32,13 +33,18 @@ services:
   proxy:
     build:
       context: ./proxy
-    #restart: always
+    restart: always
     depends_on:
       - app
+      - frontend
     ports:
       - "80:80"  # Changed from 80:8000 to 80:80
     volumes:
       - static-data:/vol/static  # Ensure it matches app's volume
+    environment:
+      - LISTEN_PORT=80
+      - APP_HOST=app
+      - APP_PORT=9000  # Changed to match uwsgi port
 
   frontend:
     image: ${DOCKER_IMAGE_FRONTEND}
