@@ -5,7 +5,7 @@ services:
     build:
       context: .
     ports:
-      - 8000:8000
+      - 8001:8001
     volumes:
       - ./app:/app
       - ./data/web:/vol/web
@@ -14,22 +14,22 @@ services:
       - DEBUG=1
 
       - DB_HOST=db
-      - DB_NAME=TutorCenterdb
-      - DB_USER=TutorUser
-      - DB_PASS=TutorPassword
+      - DB_NAME=Lymodb
+      - DB_USER=LymoUser
+      - DB_PASS=LymoPassword
     depends_on:
       - db
     command: >
       sh -c "python manage.py wait_for_db &&
              python manage.py migrate &&
-             python manage.py runserver 0.0.0.0:8000" # Change port to 8001
+             python manage.py runserver 0.0.0.0:8001" # Change port to 8001
 
 
   db:
     image: postgres:13-alpine
     environment:
-      - POSTGRES_DB=TutorCenterdb
-      - POSTGRES_USER=TutorUser
-      - POSTGRES_PASSWORD=TutorPassword
+      - POSTGRES_DB=Lymodb
+      - POSTGRES_USER=LymoUser
+      - POSTGRES_PASSWORD=LymoPassword
     ports:
       - 5434:5432  # Exposes PostgreSQL port

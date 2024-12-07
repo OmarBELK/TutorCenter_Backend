@@ -1,15 +1,13 @@
 FROM nginxinc/nginx-unprivileged:1-alpine
-LABEL maintainer="TutorCenterApp"
+LABEL maintainer="GenericMLApp"
 
 COPY ./default.conf.tpl /etc/nginx/default.conf.tpl
 COPY ./uwsgi_params /etc/nginx/uwsgi_params
 COPY ./run.sh /run.sh
 
-ENV LISTEN_PORT=80  
-# Changed from 8000 to 80
+ENV LISTEN_PORT=8001
 ENV APP_HOST=app
-ENV APP_PORT=8000 
-# Changed from 9000 to 8000 to match app port
+ENV APP_PORT=9000
 
 USER root
 

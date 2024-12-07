@@ -1,5 +1,5 @@
 FROM python:3.9-alpine3.13
-LABEL maintainer="londonappdeveloper.com"
+LABEL maintainer="lymoapp"
 
 ENV PYTHONUNBUFFERED 1
 
@@ -8,7 +8,7 @@ COPY ./app /app
 COPY ./scripts /scripts
 
 WORKDIR /app
-EXPOSE 8000
+EXPOSE 8001
 
 RUN python -m venv /py && \
     /py/bin/pip install --upgrade pip && \
