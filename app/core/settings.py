@@ -67,23 +67,11 @@ MIDDLEWARE = [
 ]
 # CORS settings
 
-# Disable CORS_ALLOW_ALL_ORIGINS in production
-CORS_ALLOW_ALL_ORIGINS = False
+# Allow all origins for development
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ORIGIN_ALLOW_ALL = True
 
-# Enable specific origins
-CORS_ALLOWED_ORIGINS = [
-    "https://167.114.0.177:444",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
-# Trust CSRF from these origins
-CSRF_TRUSTED_ORIGINS = [
-    "https://167.114.0.177:444",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
+# Allow credentials
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = [
@@ -106,6 +94,9 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+# Add CORS_EXPOSE_HEADERS
+CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
 
 # REST Framework settings
 REST_FRAMEWORK = {
