@@ -40,9 +40,11 @@ services:
       - static-data:/vol/static  # Ensure it matches app's volume
       - ./proxy/ssl:/etc/nginx/ssl:ro
     environment:
-      - DOMAIN_NAME=${DOMAIN_NAME}
+      - DOMAIN_NAME=deltapi.website
       - HTTP_PORT=81
       - HTTPS_PORT=444
+      - APP_HOST=app
+      - APP_PORT=9000
 
 volumes:
   postgres-data:

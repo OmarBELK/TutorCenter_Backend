@@ -67,18 +67,22 @@ MIDDLEWARE = [
 ]
 # CORS settings
 
-CORS_ALLOW_ALL_ORIGINS = True  # Enable this for development
+# Disable CORS_ALLOW_ALL_ORIGINS in production
+CORS_ALLOW_ALL_ORIGINS = False
 
-# Comment out or remove these specific origins settings
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:5173",
-#     "http://127.0.0.1:5173",
-# ]
+# Enable specific origins
+CORS_ALLOWED_ORIGINS = [
+    "https://167.114.0.177:444",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
-# CSRF_TRUSTED_ORIGINS = [
-#     "http://localhost:5173",
-#     "http://127.0.0.1:5173",
-# ]
+# Trust CSRF from these origins
+CSRF_TRUSTED_ORIGINS = [
+    "https://167.114.0.177:444",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -187,17 +191,6 @@ MEDIA_URL = '/static/media/'
 
 MEDIA_ROOT = '/vol/web/media'
 STATIC_ROOT = '/vol/web/static'
-
-# Add this REST_FRAMEWORK configuration
-# REST_FRAMEWORK = {
-#     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
-#     # You can add other REST_FRAMEWORK settings here as needed
-#     'DEFAULT_AUTHENTICATION_CLASSES': (
-#     'rest_framework_simplejwt.authentication.JWTAuthentication',
-#     ),
-# }
-
-
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
