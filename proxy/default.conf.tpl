@@ -1,14 +1,14 @@
 server {
     # HTTP - redirect all requests to HTTPS
     listen ${HTTP_PORT};
-    server_name ${DOMAIN_NAME};
+    server_name "${DOMAIN_NAME}";
     return 301 https://$server_name:${HTTPS_PORT}$request_uri;
 }
 
 server {
     # HTTPS
     listen ${HTTPS_PORT} ssl;
-    server_name ${DOMAIN_NAME};
+    server_name "${DOMAIN_NAME}";
 
     # SSL configuration
     ssl_certificate /etc/nginx/ssl/fullchain.pem;
