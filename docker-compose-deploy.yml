@@ -38,8 +38,8 @@ services:
       - "444:444"
     volumes:
       - static-data:/vol/static  # Ensure it matches app's volume
-      - ./ssl/fullchain.pem:/etc/nginx/ssl/fullchain.pem
-      - ./ssl/privkey.pem:/etc/nginx/ssl/privkey.pem
+      - ./proxy/ssl/fullchain.pem:/etc/nginx/ssl/fullchain.pem
+      - ./proxy/ssl/privkey.pem:/etc/nginx/ssl/privkey.pem
     environment:
       - DOMAIN_NAME=deltapi.website
       - HTTP_PORT=81
