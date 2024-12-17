@@ -25,8 +25,6 @@ server {
     ssl_session_tickets off;
 
     # HSTS
-    ssl_certificate /etc/nginx/ssl/certificate.crt;
-    ssl_certificate_key /etc/nginx/ssl/private.key;
     add_header Strict-Transport-Security "max-age=31536000" always;
 
     location /static {
