@@ -2,7 +2,7 @@ server {
     # HTTP - redirect all requests to HTTPS
     listen ${HTTP_PORT};
     server_name "${DOMAIN_NAME}";
-    return 301 https://$server_name:${HTTPS_PORT}$request_uri;
+    return 301 https://${server_name}:${HTTPS_PORT}$request_uri;
 }
 
 server {
