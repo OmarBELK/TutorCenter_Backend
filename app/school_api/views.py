@@ -833,10 +833,10 @@ def create_payments(request):
     - etudiant_id: ID of the student
     - groupe_id: ID of the group
     - montant: Payment amount
+    - commission_percentage: Percentage of total amount being paid (e.g., 50 for 50%)
     
     Optional fields:
     - frais_inscription: Registration fee (default: 0)
-    - commission_percentage: Commission percentage for professors (default: 0)
     """
     payments_data = request.data.get('payments', [])
     responses = []
@@ -844,7 +844,7 @@ def create_payments(request):
     for data in payments_data:
         try:
             # Validate required fields
-            required_fields = ['etudiant_id', 'groupe_id', 'montant']
+            required_fields = ['etudiant_id', 'groupe_id', 'montant', 'commission_percentage']
             for field in required_fields:
                 if field not in data:
                     responses.append({
@@ -856,29 +856,34 @@ def create_payments(request):
             # Get the groupe's subscription price
             groupe = Groupe.objects.get(id=data['groupe_id'])
             montant_total = groupe.prix_subscription
+            
+            montant = float(data['montant'])
+            commission_percentage = float(data['commission_percentage'])
+            frais_inscription = float(data.get('frais_inscription', 0))
 
-            montant = data['montant']
-            frais_inscription = data.get('frais_inscription', 0)
-            total_payment = montant + frais_inscription
-            remaining = montant_total - total_payment
+            # Calculate expected payment based on commission percentage
+            expected_payment = (montant_total * commission_percentage) / 100
 
-            # Create payment
+            # Calculate remaining as expected payment minus what they actually paid
+            remaining = expected_payment - montant
+
+            # Create payment record
             payment = Paiement.objects.create(
-                montant=total_payment,
+                montant=montant,  # Only course payment
                 montant_total=montant_total,
                 remaining=remaining,
-                frais_inscription=frais_inscription,
+                frais_inscription=frais_inscription,  # Registration fee kept separate
                 etudiant_id=data['etudiant_id'],
                 groupe_id=data['groupe_id'],
-                statut_paiement='PARTIAL' if remaining > 0 else 'PAID'
+                statut_paiement='PAID' if remaining <= 0 else 'PARTIAL'
             )
 
-            # Create commissions
-            commission_percentage = data.get('commission_percentage', 0)
+            # Create commissions for professors
             groupe_professeurs = GroupeProfesseur.objects.filter(groupe=groupe)
+            commissions = []
             for gp in groupe_professeurs:
-                commission_amount = min(total_payment, gp.commission_fixe) * (commission_percentage / 100)
-                Comission.objects.create(
+                commission_amount = min(montant, gp.commission_fixe) * (commission_percentage / 100)
+                commission = Comission.objects.create(
                     montant=commission_amount,
                     date_comission=payment.date_paiement,
                     statut_comission='PAID',
@@ -886,11 +891,20 @@ def create_payments(request):
                     etudiant_id=data['etudiant_id'],
                     groupe=groupe
                 )
+                commissions.append(ComissionSerializer(commission).data)
 
-            responses.append({
+            # Prepare response message
+            payment_info = {
                 'payment': PaiementSerializer(payment).data,
-                'message': f"Payment received. Total paid: {total_payment} DH (including {frais_inscription} DH registration fee), Remaining: {remaining} DH"
-            })
+                'commissions': commissions,
+                'message': (
+                    f"Payment received: {montant} MAD ({commission_percentage}% of {montant_total} MAD). "
+                    f"Registration fee: {frais_inscription} MAD. "
+                    f"Remaining: {remaining} MAD"
+                )
+            }
+
+            responses.append(payment_info)
 
         except Groupe.DoesNotExist:
             responses.append({

@@ -28,7 +28,7 @@ class Professeur(models.Model):
     date_naissance = models.DateField(null=True, blank=True)
     sexe = models.CharField(max_length=10, choices=[('M', 'Male'), ('F', 'Female')], null=True, blank=True)
     nationalite = models.CharField(max_length=100, null=True, blank=True, default='Marocain')
-    specialite = models.CharField()
+    specialite = models.CharField(max_length=100) # Added max_length
     created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
@@ -137,11 +137,12 @@ class Paiement(models.Model):
     montant = models.FloatField(blank=True, null=True)                    # Amount paid
     montant_total = models.FloatField(blank=True, null=True)              # Total course cost
     remaining = models.FloatField(blank=True, null=True)                  # Remaining amount (we set this manually)
-    frais_inscription = models.FloatField(default=100)  # Registration fee, default 100
+    frais_inscription = models.FloatField(default=100)                    # Registration fee, default 100
     date_paiement = models.DateTimeField(default=timezone.now)
     statut_paiement = models.CharField(max_length=50)
     etudiant = models.ForeignKey(Etudiant, on_delete=models.CASCADE)
     groupe = models.ForeignKey(Groupe, on_delete=models.CASCADE)
+    is_registration_fee = models.BooleanField(default=False)              # Flag to identify registration fee payments
 
     def __str__(self):
         return f"{self.etudiant.nom} - Paid: {self.montant} - Remaining: {self.remaining}"
@@ -180,5 +181,3 @@ class SortieBanque(models.Model):
 
     def __str__(self):
         return f"{self.mode_paiement} - {self.montant}"
-    
-    
