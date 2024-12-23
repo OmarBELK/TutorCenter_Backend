@@ -1261,46 +1261,34 @@ def financial_metrics_by_month(request):
 
 @api_view(['GET'])
 def weekly_financial_metrics(request):
-    # Get the start and end date from query params or default to current week
-    end_date = request.query_params.get('end_date', timezone.now().date())
-    if isinstance(end_date, str):
-        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+    # Get year and month from query params or default to current
+    today = timezone.now().date()
+    year = int(request.query_params.get('year', today.year))
+    month = int(request.query_params.get('month', today.month))
     
-    # Calculate start date (6 days before end date to get a full week)
-    start_date = end_date - timezone.timedelta(days=6)
+    # Get the start and end date of the month
+    start_date = datetime(year, month, 1).date()
+    if month == 12:
+        end_date = datetime(year + 1, 1, 1).date() - timezone.timedelta(days=1)
+    else:
+        end_date = datetime(year, month + 1, 1).date() - timezone.timedelta(days=1)
     
-    # Initialize data structure for the week
-    days_data = []
-    day_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    # Get total paiements for the month
+    paiements = Paiement.objects.filter(
+        date_paiement__year=year,
+        date_paiement__month=month
+    ).aggregate(total=Sum('montant'))['total'] or 0
     
-    # Loop through each day of the week
-    current_date = start_date
-    while current_date <= end_date:
-        # Get day name
-        day_name = day_names[current_date.weekday()]
-        
-        # Get total paiements for the day
-        paiements = Paiement.objects.filter(
-            date_paiement__date=current_date
-        ).aggregate(total=Sum('montant'))['total'] or 0
-        
-        # Get total commissions for the day
-        commissions = Comission.objects.filter(
-            date_comission__date=current_date
-        ).aggregate(total=Sum('montant'))['total'] or 0
-        
-        days_data.append({
-            'name': day_name,
-            'paiements': float(paiements),
-            'commissions': float(commissions)
-        })
-        
-        current_date += timezone.timedelta(days=1)
+    # Get total commissions for the month
+    commissions = Comission.objects.filter(
+        date_comission__year=year,
+        date_comission__month=month
+    ).aggregate(total=Sum('montant'))['total'] or 0
     
     return Response({
-        'start_date': start_date.isoformat(),
-        'end_date': end_date.isoformat(),
-        'data': days_data
+        'name': start_date.strftime('%B'),  # Month name (e.g., "December")
+        'paiements': float(paiements),
+        'commissions': float(commissions)
     })
 
 

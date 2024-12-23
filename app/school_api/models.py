@@ -147,13 +147,7 @@ class Paiement(models.Model):
     def __str__(self):
         return f"{self.etudiant.nom} - Paid: {self.montant} - Remaining: {self.remaining}"
 
-
-
-
 """ ------------------------------------------ Financial Models -----------------------------------------------"""
-
-
-
 from django.db import models
 from django.utils import timezone
 
