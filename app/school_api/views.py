@@ -993,8 +993,23 @@ class ComissionListView(generics.ListAPIView):
     queryset = Comission.objects.all()
     serializer_class = ComissionSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['professeur', 'etudiant', 'groupe', 'statut_comission']
+    filterset_fields = ['professeur', 'etudiant', 'groupe', 'statut_comission', 'groupe__niveau', 'groupe__filiere']
     ordering_fields = ['date_comission', 'montant']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filter by niveau
+        niveau_id = self.request.query_params.get('niveau')
+        if niveau_id:
+            queryset = queryset.filter(groupe__niveau_id=niveau_id)
+            
+        # Filter by filiere
+        filiere_id = self.request.query_params.get('filiere')
+        if filiere_id:
+            queryset = queryset.filter(groupe__filiere_id=filiere_id)
+
+        return queryset
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -1007,29 +1022,57 @@ class ComissionListView(generics.ListAPIView):
             end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
             queryset = queryset.filter(date_comission__range=[start_date, end_date])
 
-        # Aggregation
-        total_amount = queryset.aggregate(total=Sum('montant'))['total']
+        # Enhanced aggregation with grouping
+        total_amount = queryset.aggregate(total=Sum('montant'))['total'] or 0
+        
+        # Group by niveau if requested
+        if request.query_params.get('group_by_niveau'):
+            niveau_stats = queryset.values(
+                'groupe__niveau__id',
+                'groupe__niveau__nom_niveau'
+            ).annotate(
+                total=Sum('montant'),
+                count=Count('id')
+            )
+        else:
+            niveau_stats = None
+            
+        # Group by filiere if requested
+        if request.query_params.get('group_by_filiere'):
+            filiere_stats = queryset.values(
+                'groupe__filiere__id',
+                'groupe__filiere__nom_filiere'
+            ).annotate(
+                total=Sum('montant'),
+                count=Count('id')
+            )
+        else:
+            filiere_stats = None
 
         # Pagination
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response({
+            response_data = {
                 'results': serializer.data,
                 'total_amount': total_amount
-            })
+            }
+            if niveau_stats:
+                response_data['niveau_stats'] = niveau_stats
+            if filiere_stats:
+                response_data['filiere_stats'] = filiere_stats
+            return self.get_paginated_response(response_data)
 
         serializer = self.get_serializer(queryset, many=True)
-        return Response({
+        response_data = {
             'results': serializer.data,
             'total_amount': total_amount
-        })
-
-
-
-
-
-
+        }
+        if niveau_stats:
+            response_data['niveau_stats'] = niveau_stats
+        if filiere_stats:
+            response_data['filiere_stats'] = filiere_stats
+        return Response(response_data)
 """ -------------------------------------                Users          ---------------------------------------"""
 
 from rest_framework import generics, status
