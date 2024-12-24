@@ -9,7 +9,7 @@ class EtudiantSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Etudiant
-        fields = ['id', 'nom', 'prenom', 'date_naissance', 'groupe_id', 'telephone', 'adresse', 'sexe', 'nationalite', 'contact_urgence', 'created_at']
+        fields = ['id', 'nom', 'prenom', 'date_naissance', 'groupe_id', 'telephone', 'adresse', 'sexe', 'nationalite', 'contact_urgence', 'etablissement', 'created_at']
 
     def create(self, validated_data):
         groupe_id = validated_data.pop('groupe_id', None)

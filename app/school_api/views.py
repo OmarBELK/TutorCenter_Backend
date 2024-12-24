@@ -326,7 +326,7 @@ class FiliereListView(generics.ListAPIView):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
 
-        # Date range filtering for created_at
+        # Date range filtering
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
         if start_date and end_date:
@@ -419,7 +419,7 @@ class MatiereListView(generics.ListAPIView):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
 
-        # Date range filtering for created_at
+        # Date range filtering
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
         if start_date and end_date:
@@ -791,8 +791,36 @@ class PaiementListView(generics.ListAPIView):
     queryset = Paiement.objects.all()
     serializer_class = PaiementSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['etudiant', 'groupe', 'statut_paiement']
-    ordering_fields = ['date_paiement', 'montant']
+    filterset_fields = ['etudiant', 'groupe', 'statut_paiement', 'groupe__niveau', 'groupe__filiere']
+    ordering_fields = ['date_paiement', 'montant', 'remaining']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filter by niveau
+        niveau_id = self.request.query_params.get('niveau')
+        if niveau_id:
+            queryset = queryset.filter(groupe__niveau_id=niveau_id)
+            
+        # Filter by filiere
+        filiere_id = self.request.query_params.get('filiere')
+        if filiere_id:
+            queryset = queryset.filter(groupe__filiere_id=filiere_id)
+            
+        # Filter by payment status (PAID, PARTIAL)
+        payment_status = self.request.query_params.get('status')
+        if payment_status:
+            queryset = queryset.filter(statut_paiement=payment_status)
+            
+        # Filter by remaining amount
+        has_remaining = self.request.query_params.get('has_remaining')
+        if has_remaining is not None:
+            if has_remaining.lower() == 'true':
+                queryset = queryset.filter(remaining__gt=0)
+            elif has_remaining.lower() == 'false':
+                queryset = queryset.filter(remaining=0)
+
+        return queryset
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -805,23 +833,85 @@ class PaiementListView(generics.ListAPIView):
             end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
             queryset = queryset.filter(date_paiement__range=[start_date, end_date])
 
-        # Aggregation
-        total_amount = queryset.aggregate(total=Sum('montant'))['total']
+        # Enhanced aggregation
+        aggregations = queryset.aggregate(
+            total_amount=Sum('montant'),
+            total_remaining=Sum('remaining'),
+            total_registration_fees=Sum('frais_inscription')
+        )
+        
+        # Group by niveau if requested
+        if request.query_params.get('group_by_niveau'):
+            niveau_stats = queryset.values(
+                'groupe__niveau__id',
+                'groupe__niveau__nom_niveau'
+            ).annotate(
+                total_paid=Sum('montant'),
+                total_remaining=Sum('remaining'),
+                total_registration_fees=Sum('frais_inscription'),
+                payment_count=Count('id')
+            )
+        else:
+            niveau_stats = None
+            
+        # Group by filiere if requested
+        if request.query_params.get('group_by_filiere'):
+            filiere_stats = queryset.values(
+                'groupe__filiere__id',
+                'groupe__filiere__nom_filiere'
+            ).annotate(
+                total_paid=Sum('montant'),
+                total_remaining=Sum('remaining'),
+                total_registration_fees=Sum('frais_inscription'),
+                payment_count=Count('id')
+            )
+        else:
+            filiere_stats = None
+            
+        # Group by status if requested
+        if request.query_params.get('group_by_status'):
+            status_stats = queryset.values(
+                'statut_paiement'
+            ).annotate(
+                total_paid=Sum('montant'),
+                total_remaining=Sum('remaining'),
+                payment_count=Count('id')
+            )
+        else:
+            status_stats = None
 
         # Pagination
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response({
+            response_data = {
                 'results': serializer.data,
-                'total_amount': total_amount
-            })
+                'total_amount': aggregations['total_amount'] or 0,
+                'total_remaining': aggregations['total_remaining'] or 0,
+                'total_registration_fees': aggregations['total_registration_fees'] or 0
+            }
+            if niveau_stats:
+                response_data['niveau_stats'] = niveau_stats
+            if filiere_stats:
+                response_data['filiere_stats'] = filiere_stats
+            if status_stats:
+                response_data['status_stats'] = status_stats
+            return self.get_paginated_response(response_data)
 
         serializer = self.get_serializer(queryset, many=True)
-        return Response({
+        response_data = {
             'results': serializer.data,
-            'total_amount': total_amount
-        })
+            'total_amount': aggregations['total_amount'] or 0,
+            'total_remaining': aggregations['total_remaining'] or 0,
+            'total_registration_fees': aggregations['total_registration_fees'] or 0
+        }
+        if niveau_stats:
+            response_data['niveau_stats'] = niveau_stats
+        if filiere_stats:
+            response_data['filiere_stats'] = filiere_stats
+        if status_stats:
+            response_data['status_stats'] = status_stats
+        return Response(response_data)
     
 
 @api_view(['POST'])

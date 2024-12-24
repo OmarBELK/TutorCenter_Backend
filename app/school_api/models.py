@@ -14,6 +14,7 @@ class Etudiant(models.Model):
     sexe = models.CharField(max_length=10, choices=[('M', 'Male'), ('F', 'Female')], null=True, blank=True)
     nationalite = models.CharField(max_length=100, null=True, blank=True, default='Marocain')
     contact_urgence = models.CharField(max_length=100, null=True, blank=True)
+    etablissement = models.CharField(max_length=200, null=True, blank=True)  # Optional establishment field
     created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self) -> str:
