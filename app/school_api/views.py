@@ -832,6 +832,7 @@ def create_payments(request):
     Each payment should include:
     - etudiant_id: ID of the student
     - groupe_id: ID of the group
+    - professeurs: List of professor IDs who will receive commission
     - montant: Payment amount
     - commission_percentage: Percentage of total amount being paid (e.g., 50 for 50%)
     
@@ -844,7 +845,7 @@ def create_payments(request):
     for data in payments_data:
         try:
             # Validate required fields
-            required_fields = ['etudiant_id', 'groupe_id', 'montant', 'commission_percentage']
+            required_fields = ['etudiant_id', 'groupe_id', 'professeurs', 'montant', 'commission_percentage']
             for field in required_fields:
                 if field not in data:
                     responses.append({
@@ -878,8 +879,12 @@ def create_payments(request):
                 statut_paiement='PAID' if remaining <= 0 else 'PARTIAL'
             )
 
-            # Create commissions for professors
-            groupe_professeurs = GroupeProfesseur.objects.filter(groupe=groupe)
+            # Create commissions only for selected professors in the groupe
+            groupe_professeurs = GroupeProfesseur.objects.filter(
+                groupe=groupe,
+                professeur_id__in=data['professeurs']
+            )
+            
             commissions = []
             for gp in groupe_professeurs:
                 commission_amount = min(montant, gp.commission_fixe) * (commission_percentage / 100)
@@ -900,7 +905,8 @@ def create_payments(request):
                 'message': (
                     f"Payment received: {montant} MAD ({commission_percentage}% of {montant_total} MAD). "
                     f"Registration fee: {frais_inscription} MAD. "
-                    f"Remaining: {remaining} MAD"
+                    f"Remaining: {remaining} MAD. "
+                    f"Commissions created for {len(commissions)} professor(s)."
                 )
             }
 
