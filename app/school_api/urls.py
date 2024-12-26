@@ -106,13 +106,6 @@ urlpatterns = [
 
     # Dashboard Metrics
     path('dashboard/metrics/', dashboard_metrics, name='dashboard-metrics'),
-    path('dashboard/financial-metrics/', financial_metrics_by_month, name='financial-metrics'),
-    path('dashboard/weekly-financial-metrics/', weekly_financial_metrics, name='weekly-financial-metrics'),
-
+    path('dashboard/depenses-sortiebanque-by-months/', depenses_sortiebanque_by_month, name='financial-metrics'),
+    path('dashboard/paiement-commissions-by-month/', paiement_commissions_by_month, name='weekly-financial-metrics'),
 ]
-
-
-
-
-
-

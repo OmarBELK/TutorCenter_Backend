@@ -234,7 +234,7 @@ class NiveauListView(generics.ListAPIView):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
 
-        # Date range filtering for created_at
+        # Date range filtering
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
         if start_date and end_date:
@@ -1357,7 +1357,7 @@ class SortieBanqueViewSet(viewsets.ModelViewSet):
         return queryset
     
 @api_view(['GET'])
-def financial_metrics_by_month(request):
+def depenses_sortiebanque_by_month(request):
     # Get the date range from query parameters or default to current year
     year = request.query_params.get('year', timezone.now().year)
     
@@ -1380,17 +1380,11 @@ def financial_metrics_by_month(request):
             date__month=month
         ).aggregate(total=Sum('montant'))['total'] or 0
         
-        # Get total income (paiements) for the month
-        income = Paiement.objects.filter(
-            date_paiement__year=year,
-            date_paiement__month=month
-        ).aggregate(total=Sum('montant'))['total'] or 0
         
         months_data.append({
             'name': month_name,
             'depenses': depenses,
-            'sorties-banque': sorties,
-            'recettes': income
+            'sorties-banque': sorties
         })
     
     return Response({
@@ -1399,35 +1393,51 @@ def financial_metrics_by_month(request):
     })
 
 @api_view(['GET'])
-def weekly_financial_metrics(request):
-    # Get year and month from query params or default to current
+def paiement_commissions_by_month(request):
+    # Get year from query params or default to current year
     today = timezone.now().date()
     year = int(request.query_params.get('year', today.year))
-    month = int(request.query_params.get('month', today.month))
     
-    # Get the start and end date of the month
-    start_date = datetime(year, month, 1).date()
-    if month == 12:
-        end_date = datetime(year + 1, 1, 1).date() - timezone.timedelta(days=1)
-    else:
-        end_date = datetime(year, month + 1, 1).date() - timezone.timedelta(days=1)
+    # Predefined list of months
+    months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ]
     
-    # Get total paiements for the month
-    paiements = Paiement.objects.filter(
-        date_paiement__year=year,
-        date_paiement__month=month
-    ).aggregate(total=Sum('montant'))['total'] or 0
+    # Initialize data structure
+    financial_data = []
     
-    # Get total commissions for the month
-    commissions = Comission.objects.filter(
-        date_comission__year=year,
-        date_comission__month=month
-    ).aggregate(total=Sum('montant'))['total'] or 0
+    for month_num in range(1, 13):
+        # Calculate start and end dates for the month
+        start_date = datetime(year, month_num, 1).date()
+        if month_num == 12:
+            end_date = datetime(year + 1, 1, 1).date() - timezone.timedelta(days=1)
+        else:
+            end_date = datetime(year, month_num + 1, 1).date() - timezone.timedelta(days=1)
+        
+        # Calculate financial metrics
+        # Paiements (Payments) - Total Payments
+        paiements = Paiement.objects.filter(
+            date_paiement__year=year,
+            date_paiement__month=month_num
+        ).aggregate(total=Sum('montant'))['total'] or 0
+        
+        # Commissions - Total Commissions
+        commissions = Comission.objects.filter(
+            date_comission__year=year,
+            date_comission__month=month_num
+        ).aggregate(total=Sum('montant'))['total'] or 0
+        
+        # Append to financial data
+        financial_data.append({
+            'name': months[month_num - 1],
+            'commissions': float(commissions),
+            'paiements': float(paiements)
+        })
     
     return Response({
-        'name': start_date.strftime('%B'),  # Month name (e.g., "December")
-        'paiements': float(paiements),
-        'commissions': float(commissions)
+        'year': year,
+        'data': financial_data
     })
 
 
