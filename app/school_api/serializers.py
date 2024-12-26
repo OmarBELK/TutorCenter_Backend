@@ -252,11 +252,31 @@ class GroupeWithEtudiantsSerializer(serializers.ModelSerializer):
         } for gm in groupe_matieres]
 
 """ ---------------------------------------  Update Serializer for Paiement ------------------------------------"""
+class GroupeBasicSerializer(serializers.ModelSerializer):
+    niveau_info = serializers.SerializerMethodField()
+    filiere_info = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Groupe
+        fields = ['id', 'nom_groupe', 'niveau', 'max_etudiants', 'prix_subscription', 'filiere', 'niveau_info', 'filiere_info']
+
+    def get_niveau_info(self, obj):
+        return {
+            'id': obj.niveau.id,
+            'nom_niveau': obj.niveau.nom_niveau
+        }
+
+    def get_filiere_info(self, obj):
+        return {
+            'id': obj.filiere.id,
+            'nom_filiere': obj.filiere.nom_filiere
+        }
+        
 class PaiementSerializer(serializers.ModelSerializer):
     etudiant_id = serializers.IntegerField(write_only=True)
     groupe_id = serializers.IntegerField(write_only=True)
     etudiant = EtudiantSerializer(read_only=True)
-    groupe = GroupeSerializer(read_only=True)
+    groupe = GroupeBasicSerializer(read_only=True)
 
     class Meta:
         model = Paiement
@@ -387,10 +407,7 @@ class PaiementSerializer(serializers.ModelSerializer):
 #         return commission_base * (commission_percentage / 100)
 
 
-class GroupeBasicSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Groupe
-        fields = ['id', 'nom_groupe', 'niveau', 'filiere']
+
 
 
 class ComissionSerializer(serializers.ModelSerializer):

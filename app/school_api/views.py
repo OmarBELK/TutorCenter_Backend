@@ -1464,6 +1464,7 @@ def etudiant_details(request, pk):
             groups_data.append({
                 'id': groupe.id,
                 'nom_groupe': groupe.nom_groupe,
+                'prix_subscription': groupe.prix_subscription,
                 'niveau': {
                     'id': groupe.niveau.id,
                     'nom_niveau': groupe.niveau.nom_niveau
@@ -1496,6 +1497,7 @@ def etudiant_details(request, pk):
             'sexe': etudiant.sexe,
             'nationalite': etudiant.nationalite,
             'contact_urgence': etudiant.contact_urgence,
+            'etablissement': etudiant.etablissement,
             'created_at': etudiant.created_at,
             'groupes': groups_data,
             'paiements': paiements_data,
