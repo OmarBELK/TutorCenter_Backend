@@ -277,6 +277,7 @@ class PaiementSerializer(serializers.ModelSerializer):
     groupe_id = serializers.IntegerField(write_only=True)
     etudiant = EtudiantSerializer(read_only=True)
     groupe = GroupeBasicSerializer(read_only=True)
+    month_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Paiement
@@ -287,12 +288,30 @@ class PaiementSerializer(serializers.ModelSerializer):
             'remaining',            # Remaining amount
             'frais_inscription',    # Registration fee
             'date_paiement',
+            'month_name',           # French month name
             'statut_paiement',
             'etudiant',
             'groupe',
             'etudiant_id',
             'groupe_id'
         ]
+
+    def get_month_name(self, obj):
+        french_months = {
+            1: 'Janvier',
+            2: 'Février',
+            3: 'Mars',
+            4: 'Avril',
+            5: 'Mai',
+            6: 'Juin',
+            7: 'Juillet',
+            8: 'Août',
+            9: 'Septembre',
+            10: 'Octobre',
+            11: 'Novembre',
+            12: 'Décembre'
+        }
+        return french_months[obj.date_paiement.month]
 
     def validate(self, data):
         etudiant_id = data.get('etudiant_id')
@@ -411,18 +430,35 @@ class PaiementSerializer(serializers.ModelSerializer):
 
 
 class ComissionSerializer(serializers.ModelSerializer):
-
     professeur = ProfesseurSerializer(read_only=True)
     etudiant   = EtudiantSerializer(read_only=True) 
     groupe = GroupeBasicSerializer(read_only=True)
+    month_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Comission
         fields = [
-            'id', 'montant', 'date_comission', 
+            'id', 'montant', 'date_comission', 'month_name',
             'statut_comission', 'professeur',
             'etudiant', 'groupe'
         ]
+
+    def get_month_name(self, obj):
+        french_months = {
+            1: 'Janvier',
+            2: 'Février',
+            3: 'Mars',
+            4: 'Avril',
+            5: 'Mai',
+            6: 'Juin',
+            7: 'Juillet',
+            8: 'Août',
+            9: 'Septembre',
+            10: 'Octobre',
+            11: 'Novembre',
+            12: 'Décembre'
+        }
+        return french_months[obj.date_comission.month]
 
 
 """---------------------------------------  Serializer for USERS  ------------------------------------"""

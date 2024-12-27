@@ -1489,10 +1489,25 @@ def etudiant_details(request, pk):
         
         # Get all payments made by the student
         paiements = Paiement.objects.filter(etudiant=etudiant)
+        french_months = {
+            1: 'Janvier',
+            2: 'Février',
+            3: 'Mars',
+            4: 'Avril',
+            5: 'Mai',
+            6: 'Juin',
+            7: 'Juillet',
+            8: 'Août',
+            9: 'Septembre',
+            10: 'Octobre',
+            11: 'Novembre',
+            12: 'Décembre'
+        }
         paiements_data = [{
             'id': p.id,
             'montant': p.montant,
             'date_paiement': p.date_paiement,
+            'month_name': french_months[p.date_paiement.month],
             'statut_paiement': p.statut_paiement,
             'groupe': p.groupe.nom_groupe
         } for p in paiements]
@@ -1571,10 +1586,25 @@ def professeur_details(request, pk):
 
         # Get all commissions for the professor
         commissions = Comission.objects.filter(professeur=professeur)
+        french_months = {
+            1: 'Janvier',
+            2: 'Février',
+            3: 'Mars',
+            4: 'Avril',
+            5: 'Mai',
+            6: 'Juin',
+            7: 'Juillet',
+            8: 'Août',
+            9: 'Septembre',
+            10: 'Octobre',
+            11: 'Novembre',
+            12: 'Décembre'
+        }
         commissions_data = [{
             'id': c.id,
             'montant': c.montant,
             'date_comission': c.date_comission,
+            'month_name': french_months[c.date_comission.month],
             'statut_comission': c.statut_comission,
             'etudiant': {
                 'id': c.etudiant.id,
