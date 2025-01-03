@@ -9,8 +9,6 @@ from rest_framework import generics, filters
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Comission
 from .serializers import ComissionSerializer
-from django.db.models import Sum
-from datetime import datetime
 from .models import *
 from .serializers import *
 from rest_framework import generics, filters, status
@@ -925,6 +923,7 @@ def create_payments(request):
     - professeurs: List of professor IDs who will receive commission
     - montant: Payment amount
     - commission_percentage: Percentage of total amount being paid (e.g., 50 for 50%)
+    - mois_paiement: Payment month in YYYY-MM format (optional, defaults to current month)
     
     Optional fields:
     - frais_inscription: Registration fee (default: 0)
@@ -951,6 +950,10 @@ def create_payments(request):
             montant = float(data['montant'])
             commission_percentage = float(data['commission_percentage'])
             frais_inscription = float(data.get('frais_inscription', 0))
+            
+            # Get payment month (default to current month if not provided)
+            payment_date = timezone.now()
+            mois_paiement = data.get('mois_paiement', payment_date.strftime('%Y-%m'))
 
             # Calculate expected payment based on commission percentage
             expected_payment = (montant_total * commission_percentage) / 100
@@ -966,6 +969,8 @@ def create_payments(request):
                 frais_inscription=frais_inscription,  # Registration fee kept separate
                 etudiant_id=data['etudiant_id'],
                 groupe_id=data['groupe_id'],
+                mois_paiement=mois_paiement,
+                date_paiement=payment_date,
                 statut_paiement='PAID' if remaining <= 0 else 'PARTIAL'
             )
 
@@ -981,6 +986,7 @@ def create_payments(request):
                 commission = Comission.objects.create(
                     montant=commission_amount,
                     date_comission=payment.date_paiement,
+                    mois_comission=mois_paiement,
                     statut_comission='PAID',
                     professeur=gp.professeur,
                     etudiant_id=data['etudiant_id'],
@@ -996,6 +1002,7 @@ def create_payments(request):
                     f"Payment received: {montant} MAD ({commission_percentage}% of {montant_total} MAD). "
                     f"Registration fee: {frais_inscription} MAD. "
                     f"Remaining: {remaining} MAD. "
+                    f"Month: {mois_paiement}. "
                     f"Commissions created for {len(commissions)} professor(s)."
                 )
             }

@@ -125,6 +125,7 @@ class EtudiantGroupe(models.Model):
 class Comission(models.Model):
     montant = models.FloatField()  # The amount of commission
     date_comission = models.DateTimeField(default=timezone.now)
+    mois_comission = models.CharField(max_length=7)                       # Format: YYYY-MM
     statut_comission = models.CharField(max_length=50)
     professeur = models.ForeignKey(Professeur, on_delete=models.CASCADE)
     etudiant = models.ForeignKey(Etudiant, on_delete=models.CASCADE)
@@ -140,6 +141,7 @@ class Paiement(models.Model):
     remaining = models.FloatField(blank=True, null=True)                  # Remaining amount (we set this manually)
     frais_inscription = models.FloatField(default=100)                    # Registration fee, default 100
     date_paiement = models.DateTimeField(default=timezone.now)
+    mois_paiement = models.CharField(max_length=7)                        # Format: YYYY-MM
     statut_paiement = models.CharField(max_length=50)
     etudiant = models.ForeignKey(Etudiant, on_delete=models.CASCADE)
     groupe = models.ForeignKey(Groupe, on_delete=models.CASCADE)

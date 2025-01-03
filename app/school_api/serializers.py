@@ -288,6 +288,7 @@ class PaiementSerializer(serializers.ModelSerializer):
             'remaining',            # Remaining amount
             'frais_inscription',    # Registration fee
             'date_paiement',
+            'mois_paiement',        # YYYY-MM format
             'month_name',           # French month name
             'statut_paiement',
             'etudiant',
@@ -297,21 +298,17 @@ class PaiementSerializer(serializers.ModelSerializer):
         ]
 
     def get_month_name(self, obj):
-        french_months = {
-            1: 'Janvier',
-            2: 'Février',
-            3: 'Mars',
-            4: 'Avril',
-            5: 'Mai',
-            6: 'Juin',
-            7: 'Juillet',
-            8: 'Août',
-            9: 'Septembre',
-            10: 'Octobre',
-            11: 'Novembre',
-            12: 'Décembre'
+        month_names = {
+            '01': 'Janvier', '02': 'Février', '03': 'Mars',
+            '04': 'Avril', '05': 'Mai', '06': 'Juin',
+            '07': 'Juillet', '08': 'Août', '09': 'Septembre',
+            '10': 'Octobre', '11': 'Novembre', '12': 'Décembre'
         }
-        return french_months[obj.date_paiement.month]
+        try:
+            month = obj.mois_paiement.split('-')[1]
+            return month_names.get(month, '')
+        except:
+            return ''
 
     def validate(self, data):
         etudiant_id = data.get('etudiant_id')
@@ -431,36 +428,32 @@ class PaiementSerializer(serializers.ModelSerializer):
 
 class ComissionSerializer(serializers.ModelSerializer):
     professeur = ProfesseurSerializer(read_only=True)
-    etudiant   = EtudiantSerializer(read_only=True) 
+    etudiant = EtudiantSerializer(read_only=True) 
     groupe = GroupeBasicSerializer(read_only=True)
     month_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Comission
         fields = [
-            'id', 'montant', 'date_comission', 'month_name',
+            'id', 'montant', 'date_comission', 
+            'mois_comission',  # YYYY-MM format
+            'month_name',      # French month name
             'statut_comission', 'professeur',
             'etudiant', 'groupe'
         ]
 
     def get_month_name(self, obj):
-        french_months = {
-            1: 'Janvier',
-            2: 'Février',
-            3: 'Mars',
-            4: 'Avril',
-            5: 'Mai',
-            6: 'Juin',
-            7: 'Juillet',
-            8: 'Août',
-            9: 'Septembre',
-            10: 'Octobre',
-            11: 'Novembre',
-            12: 'Décembre'
+        month_names = {
+            '01': 'Janvier', '02': 'Février', '03': 'Mars',
+            '04': 'Avril', '05': 'Mai', '06': 'Juin',
+            '07': 'Juillet', '08': 'Août', '09': 'Septembre',
+            '10': 'Octobre', '11': 'Novembre', '12': 'Décembre'
         }
-        return french_months[obj.date_comission.month]
-
-
+        try:
+            month = obj.mois_comission.split('-')[1]
+            return month_names.get(month, '')
+        except:
+            return ''
 """---------------------------------------  Serializer for USERS  ------------------------------------"""
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
