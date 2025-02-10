@@ -106,6 +106,7 @@ urlpatterns = [
 
     # Dashboard Metrics
     path('dashboard/metrics/', dashboard_metrics, name='dashboard-metrics'),
+    path('dashboard/financial-data/weekdays/', views.financial_data_by_weekday, name='financial-data-weekdays'),
     path('dashboard/depenses-sortiebanque-by-months/', depenses_sortiebanque_by_month, name='financial-metrics'),
     path('dashboard/paiement-commissions-by-month/', paiement_commissions_by_month, name='weekly-financial-metrics'),
 ]

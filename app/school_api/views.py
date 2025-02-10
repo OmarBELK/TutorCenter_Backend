@@ -128,7 +128,7 @@ class ProfesseurListView(generics.ListAPIView):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
 
-        # Date range filtering for created_at
+        # Date range filtering
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
         if start_date and end_date:
@@ -1447,6 +1447,87 @@ def paiement_commissions_by_month(request):
         'data': financial_data
     })
 
+@api_view(['GET'])
+def financial_data_by_weekday(request):
+    """
+    Get financial data grouped by weekday (Monday through Sunday) for the last 7 days.
+    """
+    # Calculate date range
+    end_date = timezone.now().date()
+    start_date = end_date - timezone.timedelta(days=6)  # Last 7 days including today
+    
+    # Initialize weekday data structure with French names
+    weekdays = {
+        0: 'Lundi',
+        1: 'Mardi',
+        2: 'Mercredi',
+        3: 'Jeudi',
+        4: 'Vendredi',
+        5: 'Samedi',
+        6: 'Dimanche'
+    }
+    
+    weekday_data = {day: {
+        'name': name,
+        'paiements': 0,
+        'commissions': 0,
+        'depenses': 0,
+        'sorties_banque': 0,
+        'net_balance': 0
+    } for day, name in weekdays.items()}
+    
+    # Get Paiements by weekday
+    paiements = Paiement.objects.filter(
+        date_paiement__date__gte=start_date,
+        date_paiement__date__lte=end_date
+    )
+    for paiement in paiements:
+        weekday = paiement.date_paiement.weekday()
+        weekday_data[weekday]['paiements'] += float(paiement.montant or 0)
+    
+    # Get Commissions by weekday
+    commissions = Comission.objects.filter(
+        date_comission__date__gte=start_date,
+        date_comission__date__lte=end_date
+    )
+    for commission in commissions:
+        weekday = commission.date_comission.weekday()
+        weekday_data[weekday]['commissions'] += float(commission.montant or 0)
+    
+    # Get Depenses by weekday
+    depenses = Depense.objects.filter(
+        date__date__gte=start_date,
+        date__date__lte=end_date
+    )
+    for depense in depenses:
+        weekday = depense.date.weekday()
+        weekday_data[weekday]['depenses'] += float(depense.montant or 0)
+    
+    # Get SortieBanque by weekday
+    sorties = SortieBanque.objects.filter(
+        date__date__gte=start_date,
+        date__date__lte=end_date
+    )
+    for sortie in sorties:
+        weekday = sortie.date.weekday()
+        weekday_data[weekday]['sorties_banque'] += float(sortie.montant or 0)
+    
+    # Calculate net balance for each day
+    for day_data in weekday_data.values():
+        day_data['net_balance'] = (
+            day_data['paiements'] - 
+            (day_data['commissions'] + day_data['depenses'] + day_data['sorties_banque'])
+        )
+    
+    # Convert to list and ensure correct order (Monday to Sunday)
+    result_data = [weekday_data[day] for day in range(7)]
+    
+    return Response({
+        'start_date': start_date.isoformat(),
+        'end_date': end_date.isoformat(),
+        'weekday_totals': result_data
+    })
+
 
 """ ------------------------------------------ Detail of a Etudiant -----------------------------------------------"""
 
@@ -1516,8 +1597,12 @@ def etudiant_details(request, pk):
             'date_paiement': p.date_paiement,
             'month_name': french_months[p.date_paiement.month],
             'statut_paiement': p.statut_paiement,
-            'groupe': p.groupe.nom_groupe
+            'groupe': p.groupe.nom_groupe,
+            'frais_inscription': p.frais_inscription
         } for p in paiements]
+
+        # Check if student has paid inscription fees
+        inscription_paid = any(p.frais_inscription > 0 for p in paiements)
 
         response_data = {
             'id': etudiant.id,
@@ -1534,7 +1619,11 @@ def etudiant_details(request, pk):
             'groupes': groups_data,
             'paiements': paiements_data,
             'total_paiements': sum(p.montant for p in paiements),
-            'total_groupes': len(groups_data)
+            'total_groupes': len(groups_data),
+            'inscription_status': {
+                'paid': inscription_paid,
+                'total_inscription_fees': sum(p.frais_inscription or 0 for p in paiements)
+            }
         }
         
         return Response(response_data)
