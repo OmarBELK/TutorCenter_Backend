@@ -1,0 +1,10 @@
+Django
+djangorestframework
+pytz
+sqlparse
+asgiref
+psycopg2>=2.8.6,<2.9
+uWSGI>=2.0.19.1,<2.1
+django-cors-headers
+django-filter
+djangorestframework-simplejwt
