@@ -1483,8 +1483,12 @@ def financial_data_by_weekday(request):
     )
     for paiement in paiements:
         weekday = paiement.date_paiement.weekday()
-        weekday_data[weekday]['paiements'] += float(paiement.montant or 0)
-    
+        #weekday_data[weekday]['paiements'] += float(paiement.montant or 0)
+        # Include both montant and frais_inscription in the calculation
+        payment_total = float(paiement.montant or 0) + float(paiement.frais_inscription or 0)
+        weekday_data[weekday]['paiements'] += payment_total
+
+
     # Get Commissions by weekday
     commissions = Comission.objects.filter(
         date_comission__date__gte=start_date,
